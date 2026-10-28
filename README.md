@@ -46,7 +46,7 @@ A Dynamic Island–style notch for Android tablets. It sits at the top edge of t
 
 **Why not on the Play Store?** It relies on an Accessibility service for a display feature, which the Play Store restricts. It is distributed as an APK instead.
 
-**How much RAM does it use?** Not measured precisely yet. The app has no third-party libraries and draws everything with simple shapes, so it is expected to stay small, in the range of tens of megabytes (a rough estimate, to be replaced with measured numbers). To check on your device: *Settings → Apps → Supernova Notch → Memory*, or Developer options → *Running services*.
+**How much RAM does it use?** About 44 MB, measured on a Huawei MatePad 11.5 (HarmonyOS 3.1) in *Settings → Apps → App usage* over 3 hours with music, lyrics and the idle scene in normal use. For comparison, the same list showed Huawei Home at 119 MB, Facebook at 92 MB and Gboard at 72 MB. This is one device and one session, so your numbers may differ. To check on your device: *Settings → Apps → App usage* or Developer options → *Running services*.
 
 **How much battery does it use?** Not measured precisely yet. What affects power:
 - **Screen off**: nothing is drawn.
@@ -98,7 +98,7 @@ Notch ala Dynamic Island untuk tablet Android. Menempel di tepi atas layar, dan 
 - *Kenapa ada strip hitam?* Aplikasi tidak bisa menyembunyikan status bar, hanya menutupnya. Strip muncul saat musik main.
 - *Notch hilang sendiri?* Matikan hemat baterai untuk aplikasi ini.
 - *Lirik tidak muncul?* Lagu tidak ada di database LRCLIB.
-- *Berapa RAM yang dipakai?* Belum diukur dengan tepat. Aplikasi tanpa pustaka pihak ketiga dan menggambar semuanya dengan bentuk sederhana, jadi diperkirakan kecil, sekitar puluhan megabita (perkiraan kasar, akan diganti dengan angka terukur). Cek di *Pengaturan → Aplikasi → Supernova Notch → Memori*, atau Opsi pengembang → *Layanan yang berjalan*.
+- *Berapa RAM yang dipakai?* Sekitar 44 MB, diukur di Huawei MatePad 11.5 (HarmonyOS 3.1) pada *Pengaturan → Aplikasi → Penggunaan aplikasi* selama 3 jam dengan musik, lirik, dan adegan idle dipakai seperti biasa. Sebagai pembanding, di daftar yang sama Beranda Huawei 119 MB, Facebook 92 MB, Gboard 72 MB. Ini hasil satu perangkat dan satu sesi, jadi angka di perangkat lain bisa berbeda. Cek di *Pengaturan → Aplikasi → Penggunaan aplikasi* atau Opsi pengembang → *Layanan yang berjalan*.
 - *Berapa persen baterai yang dipakai?* Belum diukur dengan tepat. Layar mati: tidak ada yang digambar. Adegan idle: 20 bingkai per detik selama 5 menit pertama, lalu dibekukan jadi gambar diam. Musik main: notch menyegarkan diri sekitar dua kali per detik dan lirik berjalan sekitar 30 bingkai per detik selama strip tampil. Aplikasi layar penuh: notch tersembunyi dan berhenti menggambar. Cek di *Pengaturan → Baterai → Penggunaan baterai* setelah sehari pemakaian normal.
 - *Cara memperbarui?* Pasang APK terbaru di atas yang lama.
 
