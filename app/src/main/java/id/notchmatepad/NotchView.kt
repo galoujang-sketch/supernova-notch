@@ -113,6 +113,9 @@ class NotchView(
     private var controller: MediaController? = null
     private var playing = false
     private var nowPlaying: String? = null
+    private var songTitle: String? = null
+    private var songArtist: String? = null
+    private var lyricLine: String? = null
     private var lastArt: Bitmap? = null
 
     private val controllerCallback = object : MediaController.Callback() {
@@ -161,6 +164,7 @@ class NotchView(
     }
     private val titleV = label(15f, Color.WHITE, true)
     private val artistV = label(12f, gray)
+    private val lyricV = label(12.5f, Color.parseColor("#8AB4FF"), true)
     private val elapsedV = label(10f, gray).apply { gravity = Gravity.START }
     private val remainV = label(10f, gray).apply { gravity = Gravity.END }
 
@@ -205,6 +209,7 @@ class NotchView(
         }
         texts.addView(titleV, LinearLayout.LayoutParams(MATCH, WRAP))
         texts.addView(artistV, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(3) })
+        texts.addView(lyricV, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(3) })
         rowA.addView(texts, LinearLayout.LayoutParams(0, MATCH, 1f).also { it.leftMargin = dp(12) })
         addView(rowA, LinearLayout.LayoutParams(MATCH, dp(80)))
 
@@ -580,6 +585,13 @@ class NotchView(
         }
 
         nowPlaying = if (playing && title != null) title else null
+        songTitle = title
+        songArtist = md?.getString(MediaMetadata.METADATA_KEY_ARTIST)
+        val st = songTitle
+        val sa = songArtist
+        if (st != null && sa != null && Lyrics.cached(st, sa) == null) {
+            Lyrics.fetch(st, sa, durationNow()) { updateCollapsed() }
+        }
         updateProgress()
         updateCollapsed()
     }
@@ -656,10 +668,20 @@ class NotchView(
 
     // ---------------------------------------------------------------- tab tertutup
 
+    private fun updateLyric() {
+        val st = songTitle
+        val sa = songArtist
+        val lines = if (st != null && sa != null) Lyrics.cached(st, sa) else null
+        lyricLine = if (playing && lines != null) Lyrics.current(lines, positionNow()) else null
+        val t = lyricLine ?: ""
+        if (lyricV.text.toString() != t) lyricV.text = t
+    }
+
     private fun updateCollapsed() {
+        updateLyric()
         val np = nowPlaying
         val zone: String? = when {
-            np != null -> "♪ $np"
+            np != null -> "♪ " + (lyricLine ?: np)
             timerRunning -> (if (focusMode) "Fokus " else "Istirahat ") + formatMs(remainingNow())
             else -> null
         }
