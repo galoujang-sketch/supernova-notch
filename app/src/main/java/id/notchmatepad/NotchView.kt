@@ -874,6 +874,7 @@ class NotchView(
             }
             artTrackKey = trackKey
         } else if (trackKey != artTrackKey) {
+            diagArt(md, c)
             lastArt = null
             artV.setImageBitmap(null)
             artTrackKey = trackKey
@@ -973,6 +974,35 @@ class NotchView(
             }
         }
         return null
+    }
+
+    private fun diagArt(md: MediaMetadata?, c: MediaController?) {
+        val sb = StringBuilder("ART? ")
+        try {
+            for (k in listOf("android.media.metadata.ALBUM_ART", "android.media.metadata.ART", "android.media.metadata.DISPLAY_ICON"))
+                sb.append(k.substringAfterLast('.')).append('=').append(if (md?.getBitmap(k) != null) "Y" else "n").append(' ')
+            for (k in listOf("android.media.metadata.ALBUM_ART_URI", "android.media.metadata.ART_URI", "android.media.metadata.DISPLAY_ICON_URI"))
+                sb.append(k.substringAfterLast('.')).append('=').append(md?.getString(k)?.take(40) ?: "-").append(' ')
+            sb.append("desc.bmp=").append(if (md?.description?.iconBitmap != null) "Y" else "n").append(' ')
+            sb.append("desc.uri=").append(md?.description?.iconUri?.toString()?.take(40) ?: "-").append(' ')
+            val w = MediaWatcher.instance
+            sb.append("listener=").append(if (w == null) "NULL" else "ok").append(' ')
+            if (w != null && c != null) {
+                val l = w.activeNotifications.filter { it.packageName == c.packageName }
+                sb.append("notif=").append(l.size)
+                for (n in l) {
+                    sb.append(" [li=").append(if (n.notification.getLargeIcon() != null) "Y" else "n")
+                    val ex = n.notification.extras
+                    @Suppress("DEPRECATION")
+                    sb.append(" ex=").append(if (ex.get(android.app.Notification.EXTRA_LARGE_ICON) != null) "Y" else "n")
+                    @Suppress("DEPRECATION")
+                    sb.append(if (ex.get(android.app.Notification.EXTRA_LARGE_ICON_BIG) != null) "Y" else "n").append("]")
+                }
+            }
+        } catch (e: Exception) {
+            sb.append("err ").append(e.javaClass.simpleName)
+        }
+        android.widget.Toast.makeText(ctx, sb.toString(), android.widget.Toast.LENGTH_LONG).show()
     }
 
     private fun findArt(md: MediaMetadata?, c: MediaController?): Bitmap? {
