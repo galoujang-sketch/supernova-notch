@@ -49,13 +49,14 @@ h1,h2,h3{font-family:"Archivo",Impact,sans-serif;font-stretch:125%;font-weight:9
 .cover{width:5.6em;height:5.6em;border-radius:1em;flex:none;background:radial-gradient(circle at 30% 28%,#ffe08a,transparent 42%),linear-gradient(145deg,#e0245e,#7a1fa2 62%,#1b2a7a)}
 .song{display:flex;gap:1.1em;align-items:center}
 .song b{display:block;font-size:1.15em;line-height:1.2}.song small{color:#9aa0b4;font-size:.95em}
-.prog{height:.32em;border-radius:9px;background:#26293a;margin:.9em 0 .4em;overflow:hidden}
+.prog{height:.32em;border-radius:9px;background:#26293a;margin:.9em 0 .4em;overflow:hidden;cursor:pointer;position:relative}
+.prog::before{content:"";position:absolute;left:0;right:0;top:-.6em;bottom:-.6em}
 .prog i{display:block;height:100%;width:0;background:var(--blue);border-radius:9px}
-.stage[data-s=panel] .prog i{animation:fill 9s linear forwards}
-@keyframes fill{to{width:100%}}
 .tm{display:flex;justify-content:space-between;color:#9aa0b4;font-size:.8em}
 .ctl{display:flex;justify-content:center;gap:2.4em;margin-top:.5em}
+.ctl button{all:unset;cursor:pointer;display:grid;place-items:center;padding:.2em}.ctl button:focus-visible{outline:2px solid var(--hot);border-radius:6px}
 .ctl svg{height:1.3em;width:1.3em;fill:#fff}
+.stage[data-s=panel] .l.pan{pointer-events:auto}
 .dots{position:absolute;left:50%;bottom:.8em;transform:translateX(-50%);display:flex;gap:.4em}
 .dots i{width:.45em;height:.45em;border-radius:50%;background:#fff}.dots i+i{background:#555}
 .cal h4{margin:0 0 .5em;font:700 1.1em "Archivo",sans-serif}
@@ -166,8 +167,8 @@ footer a{color:#fff}
       <div class="l pan">
         <div>
           <div class="song"><div class="cover"></div><div><b>Ratu Sejagad</b><small>Vonny Sumlang</small></div></div>
-          <div class="prog"><i></i></div><div class="tm"><span>0:01</span><span>-3:12</span></div>
-          <div class="ctl"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg><svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></div>
+          <div class="prog" id="pg" role="slider" aria-label="Seek" aria-valuemin="0" aria-valuemax="192" aria-valuenow="0"><i></i></div><div class="tm"><span id="te">0:00</span><span id="tr">-3:12</span></div>
+          <div class="ctl"><button type="button" data-a="prev" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button><button type="button" data-a="pp" aria-label="Pause"><svg viewBox="0 0 24 24" id="ppi"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg></button><button type="button" data-a="next" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button></div>
         </div>
         <div class="cal"><h4 id="mon">Oktober</h4><div class="wk" id="wk"></div>
           <div class="water"><small>Air minum hari ini</small><b>650 / 1500 ml</b><div class="bar"><i></i></div></div></div>
@@ -343,25 +344,47 @@ footer a{color:#fff}
     document.getElementById('dt').textContent=dn[n.getDay()]+', '+n.getDate()+' '+mn[n.getMonth()];
     document.getElementById('sbt').textContent=two(n.getHours())+'.'+two(n.getMinutes())}
   setDate();btn.addEventListener('click',function(){setTimeout(setDate,0)});
-  /* karaoke lyrics in the strip: lines enter from the right edge and run left, 90dp per second */
-  var lyEl=document.getElementById('ly'),LY=['Lirik berjalan di strip atas','masuk dari tepi kanan, keluar di kiri','tab notch menutupinya saat lewat','satu baris menyusul baris sebelumnya'],lyI=0,lyTimer=0;
-  function lyNext(){
-    if(scr.getAttribute('data-s')==='date'||scr.getAttribute('data-s')==='idle'){lyTimer=0;return}
-    var dp=parseFloat(getComputedStyle(scr).getPropertyValue('--dp'))||1,vw=scr.getBoundingClientRect().width;
-    if(!dp||dp<.3)dp=Math.min(Math.max(vw/1300,.8),1.15);
-    var e=document.createElement('span');e.textContent=LY[lyI++%LY.length];lyEl.appendChild(e);
+  /* playback engine: one 3:12 track, timed lyric lines, seek, pause */
+  var DUR=192,PB={t:0,playing:true,idx:0},LINES=[[1,'Ini bukan lirik asli lagunya'],[6,'lirik berhak cipta tidak ditampilkan di sini'],[12,'di aplikasi, baris seperti ini datang dari LRCLIB'],[18,'lalu berjalan di strip, tepat waktu dengan lagunya'],[24,'tab notch menutupinya saat lewat']];
+  var lyEl=document.getElementById('ly'),lyAnims=[],lyNextAt=0;
+  function dpx(){var v=parseFloat(getComputedStyle(scr).getPropertyValue('--dp'));if(!v||v<.3){var w=scr.getBoundingClientRect().width;v=Math.min(Math.max(w/1300,.8),1.15)}return v}
+  function lySpawn(text){
+    var dp=dpx(),vw=scr.getBoundingClientRect().width,e=document.createElement('span');e.textContent=text;lyEl.appendChild(e);
     var w=e.getBoundingClientRect().width||200,sp=90*dp,dur=(vw+w)/sp*1000;
-    if(e.animate){var a=e.animate([{transform:'translateX('+vw+'px)'},{transform:'translateX('+(-w)+'px)'}],{duration:dur,easing:'linear'});a.onfinish=function(){e.remove()}}else{e.remove()}
-    lyTimer=setTimeout(lyNext,(w+28*dp)/sp*1000);
+    if(!e.animate){e.remove();return}
+    var a=e.animate([{transform:'translateX('+vw+'px)'},{transform:'translateX('+(-w)+'px)'}],{duration:dur,easing:'linear'});
+    if(!PB.playing||!isMusic())a.pause();
+    a.onfinish=function(){e.remove();lyAnims=lyAnims.filter(function(x){return x!==a})};lyAnims.push(a);
   }
-  function lyKick(){if(RM||lyTimer)return;lyTimer=setTimeout(lyNext,200)}
+  function lyClear(){lyAnims.forEach(function(a){a.cancel()});lyAnims=[];lyEl.innerHTML=''}
+  function isMusic(){var k=scr.getAttribute('data-s');return k==='music'||k==='panel'||k==='volume'}
+  function fmt(n){n=Math.max(0,Math.floor(n));return Math.floor(n/60)+':'+('0'+(n%60)).slice(-2)}
+  var pgI=document.querySelector('#pg i'),teEl=document.getElementById('te'),trEl=document.getElementById('tr'),pgEl=document.getElementById('pg'),ppi=document.getElementById('ppi');
+  function paint(){pgI.style.width=(PB.t/DUR*100)+'%';teEl.textContent=fmt(PB.t);trEl.textContent='-'+fmt(DUR-PB.t);pgEl.setAttribute('aria-valuenow',Math.floor(PB.t))}
+  function seek(t){PB.t=Math.max(0,Math.min(DUR-.01,t));lyClear();PB.idx=0;while(PB.idx<LINES.length&&LINES[PB.idx][0]<=PB.t)PB.idx++;paint()}
+  function setPlaying(v){PB.playing=v;ppi.innerHTML=v?'<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/>':'<path d="M7 4v16l13-8z"/>';
+    lyAnims.forEach(function(a){if(v&&isMusic())a.play();else a.pause()})}
+  var last=performance.now();
+  setInterval(function(){var n=performance.now(),dt=(n-last)/1000;last=n;
+    var m=isMusic();
+    lyAnims.forEach(function(a){if(PB.playing&&m){if(a.playState==='paused')a.play()}else a.pause()});
+    if(!m||!PB.playing)return;
+    PB.t+=dt;if(PB.t>=DUR){PB.t=0;PB.idx=0;lyClear()}
+    while(PB.idx<LINES.length&&LINES[PB.idx][0]<=PB.t){var tx=LINES[PB.idx++][1];
+      var delay=Math.max(0,lyNextAt-n);setTimeout(function(t){return function(){lySpawn(t)}}(tx),delay);
+      lyNextAt=n+delay+(tx.length*7.2+28)/90*1000;}
+    paint()},100);
+  /* optional synced lyrics file the owner supplies: docs/lyrics.lrc  ([mm:ss.xx] text) */
+  fetch('lyrics.lrc').then(function(r){return r.ok?r.text():''}).then(function(tx){
+    if(!tx)return;var L=[];tx.split(/\r?\n/).forEach(function(l){var m=l.match(/^\[(\d+):(\d+(?:\.\d+)?)\](.*)$/);if(m&&m[3].trim())L.push([+m[1]*60+ +m[2],m[3].trim()])});
+    if(L.length){LINES=L;seek(PB.t)}}).catch(function(){});
+  paint();
   var order=['date','music','panel','volume','idle'],cur=0,stopped=false,hover=false;
   function show(k){
     scr.setAttribute('data-s',k);cur=order.indexOf(k);
     tabs.forEach(function(b){b.setAttribute('aria-pressed',b.getAttribute('data-k')===k?'true':'false')});
     var p=scr.querySelector('.prog i');if(p){p.style.animation='none';void p.offsetWidth;p.style.animation=''}
     if(k==='idle'&&typeof nkick==='function')setTimeout(nkick,60);
-    if(k!=='date'&&k!=='idle')lyKick();
   }
 
   /* idle pill: two stars orbit, merge and explode, like the app */
@@ -443,7 +466,11 @@ footer a{color:#fff}
   function nkick(){nsize();nstart=performance.now();if(RM){ndraw(nstart+CYC*.5*1000)}else if(!nraf)nraf=requestAnimationFrame(nloop)}
   if(window.ResizeObserver)new ResizeObserver(function(){nsize()}).observe(nv);
   tabs.forEach(function(b){b.addEventListener('click',function(){stopped=true;show(b.getAttribute('data-k'))})});
-  var nt=scr.querySelector('.notch');nt.addEventListener('mouseenter',function(){hover=true});nt.addEventListener('mouseleave',function(){hover=false});
+  var nt=scr.querySelector('.notch');
+  [].slice.call(scr.querySelectorAll('.ctl button')).forEach(function(b){b.addEventListener('click',function(){stopped=true;var a=b.getAttribute('data-a');if(a==='pp')setPlaying(!PB.playing);else seek(0)})});
+  pgEl.addEventListener('click',function(e){stopped=true;var r=pgEl.getBoundingClientRect();seek((e.clientX-r.left)/r.width*DUR)});
+  pgEl.tabIndex=0;pgEl.addEventListener('keydown',function(e){if(e.key==='ArrowRight'){stopped=true;seek(PB.t+5)}if(e.key==='ArrowLeft'){stopped=true;seek(PB.t-5)}});
+  nt.addEventListener('mouseenter',function(){hover=true});nt.addEventListener('mouseleave',function(){hover=false});
   if(!RM)setInterval(function(){if(!stopped&&!hover)show(order[(cur+1)%order.length])},3800);
 })();
 </script>
