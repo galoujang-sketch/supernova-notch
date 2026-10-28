@@ -149,7 +149,8 @@ class NotchView(
     private var timerRemaining = FOCUS_MS
     private var timerEndAt = 0L
 
-    private val clockFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+    // Pil biasa menampilkan tanggal (jam sudah ada di status bar asli).
+    private val clockFormat = SimpleDateFormat("EEE, d MMM", Locale("id", "ID"))
 
     // ---------------------------------------------------------------- tampilan: tab tertutup
 
