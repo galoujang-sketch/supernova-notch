@@ -599,18 +599,6 @@ class NotchView(
         }
     }
 
-    private val brightnessObserver = object : android.database.ContentObserver(ui) {
-        override fun onChange(selfChange: Boolean) {
-            try {
-                val v = android.provider.Settings.System.getInt(
-                    ctx.contentResolver, android.provider.Settings.System.SCREEN_BRIGHTNESS
-                )
-                showHud(HudView.BRIGHTNESS, "Kecerahan", "", v / 255f)
-            } catch (e: Exception) {
-            }
-        }
-    }
-
     private val audioCallback = object : android.media.AudioDeviceCallback() {
         private fun isHeadphone(t: Int) = t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
             t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET ||
@@ -651,13 +639,6 @@ class NotchView(
         } catch (e: Exception) {
         }
         try {
-            ctx.contentResolver.registerContentObserver(
-                android.provider.Settings.System.getUriFor(android.provider.Settings.System.SCREEN_BRIGHTNESS),
-                false, brightnessObserver
-            )
-        } catch (e: Exception) {
-        }
-        try {
             val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             am.registerAudioDeviceCallback(audioCallback, ui)
         } catch (e: Exception) {
@@ -677,7 +658,6 @@ class NotchView(
     private fun unregisterHud() {
         hudReady = false
         try { ctx.unregisterReceiver(hudReceiver) } catch (e: Exception) {}
-        try { ctx.contentResolver.unregisterContentObserver(brightnessObserver) } catch (e: Exception) {}
         try {
             (ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager).unregisterAudioDeviceCallback(audioCallback)
         } catch (e: Exception) {}
