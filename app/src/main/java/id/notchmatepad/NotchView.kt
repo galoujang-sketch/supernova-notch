@@ -116,6 +116,9 @@ class NotchView(
     private var songTitle: String? = null
     private var songArtist: String? = null
     private var lyricLine: String? = null
+
+    /** Dipanggil saat baris lirik berganti (null = tidak ada). Strip menggulirkannya di belakang notch. */
+    var onLyric: ((String?) -> Unit)? = null
     private var lastArt: Bitmap? = null
 
     private val controllerCallback = object : MediaController.Callback() {
@@ -674,14 +677,17 @@ class NotchView(
         val lines = if (st != null && sa != null) Lyrics.cached(st, sa) else null
         lyricLine = if (playing && lines != null) Lyrics.current(lines, positionNow()) else null
         val t = lyricLine ?: ""
-        if (lyricV.text.toString() != t) lyricV.text = t
+        if (lyricV.text.toString() != t) {
+            lyricV.text = t
+            onLyric?.invoke(lyricLine)
+        }
     }
 
     private fun updateCollapsed() {
         updateLyric()
         val np = nowPlaying
         val zone: String? = when {
-            np != null -> "♪ " + (lyricLine ?: np)
+            np != null -> "♪ $np"
             timerRunning -> (if (focusMode) "Fokus " else "Istirahat ") + formatMs(remainingNow())
             else -> null
         }

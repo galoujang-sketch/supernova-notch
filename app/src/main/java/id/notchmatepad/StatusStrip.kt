@@ -3,7 +3,11 @@ package id.notchmatepad
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.PixelFormat
+import android.graphics.Typeface
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -37,8 +41,50 @@ class StatusStrip(
         it.y = 0
     }
 
+    private val d = ctx.resources.displayMetrics.density
+    private val ui = Handler(Looper.getMainLooper())
+    private val lyricPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#C8D6FF")
+        textSize = 13.5f * d
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+    private val barH = barHeight
+    private var lyric: String? = null
+    private var textW = 0f
+    private var startMs = 0L
+    private var running = false
+
+    /** Lirik bergulir dari kiri ke kanan; tab notch menutupinya saat lewat (jendela notch di atas strip). */
+    fun setLyric(text: String?) {
+        lyric = text?.takeIf { it.isNotBlank() }
+        textW = lyric?.let { lyricPaint.measureText(it) } ?: 0f
+        startMs = System.currentTimeMillis()
+        if (lyric != null && !running) {
+            running = true
+            ui.post(frame)
+        }
+        invalidate()
+    }
+
+    private val frame = object : Runnable {
+        override fun run() {
+            if (lyric == null) {
+                running = false
+                return
+            }
+            invalidate()
+            ui.postDelayed(this, 33)
+        }
+    }
+
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(Color.BLACK)
+        val t = lyric ?: return
+        val speed = 70f * d // px per detik
+        val travel = width + textW
+        val x = -textW + ((System.currentTimeMillis() - startMs) / 1000f * speed) % travel
+        val y = barH / 2f - (lyricPaint.ascent() + lyricPaint.descent()) / 2f
+        canvas.drawText(t, x, y, lyricPaint)
     }
 
     fun attach() {
@@ -49,6 +95,8 @@ class StatusStrip(
     }
 
     fun detach() {
+        lyric = null
+        ui.removeCallbacksAndMessages(null)
         try {
             wm.removeView(this)
         } catch (e: Exception) {

@@ -44,7 +44,10 @@ class NotchAccessibilityService : AccessibilityService() {
             // Strip hitam dipasang lebih dulu supaya tab notch (yang memuat info status) di atasnya.
             strip = StatusStrip(this, wm, type, stripHeight).also { it.attach() }
         }
-        notch = NotchView(this, wm, type, stripHeight).also { it.attach() }
+        notch = NotchView(this, wm, type, stripHeight).also {
+            it.onLyric = { line -> strip?.setLyric(line) }
+            it.attach()
+        }
     }
 
     private fun statusBarHeight(): Int {
