@@ -146,7 +146,7 @@ class NotchView(
     // ---- Timer fokus ----
     private var focusMode = true
     private var timerRunning = false
-    private var timerRemaining = FOCUS_MS
+    private var timerRemaining = Store.focusMin(ctx) * 60_000L
     private var timerEndAt = 0L
 
     // Pil biasa menampilkan tanggal (jam sudah ada di status bar asli).
@@ -287,7 +287,7 @@ class NotchView(
         setOnClickListener {
             focusMode = !focusMode
             timerRunning = false
-            timerRemaining = if (focusMode) FOCUS_MS else BREAK_MS
+            timerRemaining = modeMs()
             updateTimerUi()
             resetAutoCollapse()
         }
@@ -297,7 +297,14 @@ class NotchView(
 
     private val timerColumn = newColumn().also { p ->
         p.addView(modeV, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(10) })
-        p.addView(timeV, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(6) })
+        val timeRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        timeRow.addView(stepBtn("−") { adjustDuration(-1) }, LinearLayout.LayoutParams(dp(34), dp(34)))
+        timeRow.addView(timeV, LinearLayout.LayoutParams(0, WRAP, 1f))
+        timeRow.addView(stepBtn("+") { adjustDuration(1) }, LinearLayout.LayoutParams(dp(34), dp(34)))
+        p.addView(timeRow, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(6) })
         val row = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -305,7 +312,7 @@ class NotchView(
         row.addView(startBtn, LinearLayout.LayoutParams(WRAP, WRAP).also { it.rightMargin = dp(10) })
         row.addView(pill("Reset") {
             timerRunning = false
-            timerRemaining = if (focusMode) FOCUS_MS else BREAK_MS
+            timerRemaining = modeMs()
             updateTimerUi()
         })
         p.addView(row, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(16) })
@@ -719,12 +726,40 @@ class NotchView(
 
     // ---------------------------------------------------------------- timer
 
+    private fun modeMs(): Long =
+        (if (focusMode) Store.focusMin(ctx) else Store.breakMin(ctx)) * 60_000L
+
+    /** Ubah durasi mode yang sedang aktif: fokus per 5 menit (5-120), istirahat per 1 menit (1-30). */
+    private fun adjustDuration(dir: Int) {
+        if (timerRunning) return
+        if (focusMode) Store.setFocusMin(ctx, Store.focusMin(ctx) + dir * 5)
+        else Store.setBreakMin(ctx, Store.breakMin(ctx) + dir)
+        timerRemaining = modeMs()
+        updateTimerUi()
+    }
+
+    private fun stepBtn(label: String, click: () -> Unit) = TextView(ctx).apply {
+        text = label
+        setTextColor(Color.WHITE)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+        setTypeface(typeface, Typeface.BOLD)
+        gravity = Gravity.CENTER
+        background = GradientDrawable().apply {
+            setColor(Color.parseColor("#2C2C2E"))
+            shape = GradientDrawable.OVAL
+        }
+        setOnClickListener {
+            click()
+            resetAutoCollapse()
+        }
+    }
+
     private fun toggleTimer() {
         if (timerRunning) {
             timerRemaining = max(0L, timerEndAt - SystemClock.elapsedRealtime())
             timerRunning = false
         } else {
-            if (timerRemaining <= 0L) timerRemaining = if (focusMode) FOCUS_MS else BREAK_MS
+            if (timerRemaining <= 0L) timerRemaining = modeMs()
             timerEndAt = SystemClock.elapsedRealtime() + timerRemaining
             timerRunning = true
         }
@@ -738,7 +773,7 @@ class NotchView(
         if (timerRunning && SystemClock.elapsedRealtime() >= timerEndAt) {
             timerRunning = false
             focusMode = !focusMode
-            timerRemaining = if (focusMode) FOCUS_MS else BREAK_MS
+            timerRemaining = modeMs()
             try {
                 RingtoneManager.getRingtone(
                     ctx, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
@@ -862,8 +897,6 @@ class NotchView(
         const val INFO_DP = 400
         private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
         private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
-        private const val FOCUS_MS = 25L * 60_000L
-        private const val BREAK_MS = 5L * 60_000L
     }
 }
 

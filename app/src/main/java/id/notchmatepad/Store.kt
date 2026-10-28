@@ -28,6 +28,11 @@ object Store {
         prefs(c).edit().putInt("water_ml", max(0, current + ml)).apply()
     }
 
+    fun focusMin(c: Context): Int = prefs(c).getInt("focus_min", 25)
+    fun breakMin(c: Context): Int = prefs(c).getInt("break_min", 5)
+    fun setFocusMin(c: Context, v: Int) = prefs(c).edit().putInt("focus_min", v.coerceIn(5, 120)).apply()
+    fun setBreakMin(c: Context, v: Int) = prefs(c).edit().putInt("break_min", v.coerceIn(1, 30)).apply()
+
     /**
      * Mode bersih: strip hitam menutup status bar dan semua info pindah ke dalam notch
      * (hanya berlaku di mode Aksesibilitas). Default aktif.
