@@ -28,8 +28,11 @@ object Store {
         prefs(c).edit().putInt("water_ml", max(0, current + ml)).apply()
     }
 
-    /** Strip hitam yang menutup status bar (hanya berlaku di mode Aksesibilitas). Default mati. */
-    fun stripEnabled(c: Context): Boolean = prefs(c).getBoolean("strip", false)
+    /**
+     * Mode bersih: strip hitam menutup status bar dan semua info pindah ke dalam notch
+     * (hanya berlaku di mode Aksesibilitas). Default aktif.
+     */
+    fun stripEnabled(c: Context): Boolean = prefs(c).getBoolean("strip", true)
 
     fun setStrip(c: Context, value: Boolean) {
         prefs(c).edit().putBoolean("strip", value).apply()

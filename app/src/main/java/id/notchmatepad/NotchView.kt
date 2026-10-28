@@ -65,7 +65,12 @@ class NotchView(
     private fun dp(v: Int) = (v * density).toInt()
     private fun dpf(v: Float) = v * density
 
-    private val collapsedW = dp(COLLAPSED_DP)
+    // Dengan strip, tab tertutup dilebarkan untuk memuat jam, ikon notifikasi, dan status.
+    private val collapsedW = if (stripHeight > 0) {
+        min(dp(INFO_DP), ctx.resources.displayMetrics.widthPixels - dp(24))
+    } else {
+        dp(COLLAPSED_DP)
+    }
     // Dengan strip: tab menyatu dengan strip dan menjulur sedikit ke bawah seperti notch asli.
     private val collapsedH = if (stripHeight > 0) stripHeight + dp(6) else dp(30)
     private val expandedW = min(dp(640), ctx.resources.displayMetrics.widthPixels - dp(24))
@@ -129,6 +134,13 @@ class NotchView(
         setPadding(dp(14), 0, dp(14), if (stripHeight > 0) dp(6) else 0)
         layoutParams = FrameLayout.LayoutParams(collapsedW, collapsedH, Gravity.CENTER)
     }
+
+    // Mode strip: info status (jam, ikon notifikasi, wifi, baterai, ...) digambar di dalam tab.
+    private val info = StatusInfo(ctx)
+    private val infoBar = InfoBar(ctx, info, stripHeight).apply {
+        layoutParams = FrameLayout.LayoutParams(collapsedW, collapsedH, Gravity.TOP)
+    }
+    private val collapsedView: View = if (stripHeight > 0) infoBar else collapsedLabel
 
     // ---------------------------------------------------------------- halaman 1: musik + kalender
 
@@ -338,6 +350,7 @@ class NotchView(
         override fun run() {
             tickCount++
             if (tickCount % 6 == 0) refreshSessions()
+            if (stripHeight > 0 && tickCount % 4 == 0) info.readAll()
             handleTimerFinish()
             updateCollapsed()
             if (expanded) {
@@ -368,7 +381,7 @@ class NotchView(
                 outline.setRoundRect(0, (-cornerPx).toInt(), view.width, view.height, cornerPx)
             }
         }
-        addView(collapsedLabel)
+        addView(collapsedView)
         addView(expandedBox)
         showPage(0)
         applyProgress(0f)
@@ -391,11 +404,21 @@ class NotchView(
         } catch (e: SecurityException) {
             // Akses notifikasi belum diberikan; dicoba lagi tiap beberapa detik lewat tick.
         }
+        if (stripHeight > 0) {
+            info.readAll()
+            MediaWatcher.onChange = {
+                ui.post {
+                    info.readNotifications()
+                    infoBar.invalidate()
+                }
+            }
+        }
         refreshSessions()
         ui.post(tick)
     }
 
     fun detach() {
+        if (stripHeight > 0) MediaWatcher.onChange = null
         ui.removeCallbacksAndMessages(null)
         animator?.cancel()
         try {
@@ -475,8 +498,8 @@ class NotchView(
         bg.cornerRadii = floatArrayOf(0f, 0f, 0f, 0f, cornerPx, cornerPx, cornerPx, cornerPx)
         invalidateOutline()
 
-        collapsedLabel.alpha = (1f - t * 2.5f).coerceIn(0f, 1f)
-        collapsedLabel.visibility = if (t > 0.45f) View.INVISIBLE else View.VISIBLE
+        collapsedView.alpha = (1f - t * 2.5f).coerceIn(0f, 1f)
+        collapsedView.visibility = if (t > 0.45f) View.INVISIBLE else View.VISIBLE
         expandedBox.alpha = ((t - 0.45f) * 2f).coerceIn(0f, 1f)
         expandedBox.visibility = if (t < 0.02f) View.INVISIBLE else View.VISIBLE
 
@@ -627,11 +650,17 @@ class NotchView(
 
     private fun updateCollapsed() {
         val np = nowPlaying
-        collapsedLabel.text = when {
+        val zone: String? = when {
             np != null -> "♪ $np"
             timerRunning -> (if (focusMode) "Fokus " else "Istirahat ") + formatMs(remainingNow())
-            // Dengan strip, jam sudah tampil di kiri strip, jadi tab dibiarkan kosong saat diam.
-            else -> if (stripHeight > 0) "" else clockFormat.format(Date())
+            else -> null
+        }
+        if (stripHeight > 0) {
+            // Mode strip: zona tengah tab = lagu/timer, atau ikon notifikasi bila tidak ada.
+            infoBar.zoneText = zone
+            infoBar.invalidate()
+        } else {
+            collapsedLabel.text = zone ?: clockFormat.format(Date())
         }
     }
 
@@ -688,6 +717,7 @@ class NotchView(
 
     companion object {
         const val COLLAPSED_DP = 190
+        const val INFO_DP = 400
         private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
         private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
         private const val FOCUS_MS = 25L * 60_000L

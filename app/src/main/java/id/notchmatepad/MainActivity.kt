@@ -126,7 +126,7 @@ class MainActivity : Activity() {
         val access = Store.isAccessibilityEnabled(this)
         accessStatus.text = (if (access) "✔ " else "✘ ") + "Mode di atas status bar (Aksesibilitas)"
 
-        stripBtn.text = "Panel atas hitam (jam, wifi, baterai di notch): " +
+        stripBtn.text = "Mode bersih (status bar ditutup, info pindah ke notch): " +
             if (Store.stripEnabled(this)) "AKTIF" else "MATI"
 
         if (access) {

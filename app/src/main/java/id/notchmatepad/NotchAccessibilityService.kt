@@ -41,9 +41,8 @@ class NotchAccessibilityService : AccessibilityService() {
         var stripHeight = 0
         if (Store.stripEnabled(this)) {
             stripHeight = statusBarHeight()
-            val notchWidth = (NotchView.COLLAPSED_DP * resources.displayMetrics.density).toInt()
-            // Strip dipasang lebih dulu supaya pil berada di atasnya.
-            strip = StatusStrip(this, wm, type, stripHeight, notchWidth).also { it.attach() }
+            // Strip hitam dipasang lebih dulu supaya tab notch (yang memuat info status) di atasnya.
+            strip = StatusStrip(this, wm, type, stripHeight).also { it.attach() }
         }
         notch = NotchView(this, wm, type, stripHeight).also { it.attach() }
     }
