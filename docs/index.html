@@ -219,9 +219,7 @@ footer a{color:#fff}
     <div class="hbar">
       <a class="brand" href="#top"><img src="icon.svg" alt="" width="26" height="26">Supernova Notch</a>
       <nav aria-label="Main">
-        <a class="hide-s" href="#real" data-id="Layar asli">Real screens</a>
         <a class="hide-s" href="#install" data-id="Pasang">Install</a>
-        <a class="hide-s" href="#limits" data-id="Batasan">Limits</a>
         <a href="https://github.com/galoujang-sketch/supernova-notch">GitHub</a>
         <button class="lang" id="lang" type="button" aria-label="Switch language">ID</button>
       </nav>
@@ -250,23 +248,6 @@ footer a{color:#fff}
   <div class="tick" aria-hidden="true"><div>Now playing · Lyrics · Panel · Calendar · Water · Volume · Idle · Free · Open source · Now playing · Lyrics · Panel · Calendar · Water · Volume · Idle · Free · Open source · Now playing · Lyrics · Panel · Calendar · Water · Volume · Idle · Free · Open source · Now playing · Lyrics · Panel · Calendar · Water · Volume · Idle · Free · Open source · </div></div>
 </div>
 
-<section id="real">
-  <div class="wrap">
-    <h2 data-id="Layar sungguhan">Real screen</h2>
-    <p class="sub" data-id="Tangkapan layar dari tablet saya, bukan render. Cover albumnya milik pemegang hak ciptanya dan bukan bagian dari aplikasi.">Captured on my tablet, not rendered. The album cover belongs to its rights holder and is not part of the app.</p>
-    <div class="show">
-      <div>
-        <div class="hang"><img src="img/panel.png" width="1014" height="317" alt="The open panel with a song, a calendar week and a water tracker."></div>
-        <div class="hang s"><img src="img/infotab.png" width="611" height="53" alt="The collapsed strip with clock, song and status icons."></div>
-      </div>
-      <div style="display:grid;gap:22px">
-        <div class="note"><b data-id="Panel terbuka">Open panel</b><span data-id="Ketuk strip untuk membukanya. Musik di kiri, kalender dan air minum di kanan.">Tap the strip to open it. Music on the left, calendar and water on the right.</span></div>
-        <div class="note"><b data-id="Strip tertutup">Closed strip</b><span data-id="Jam, lagu yang diputar, dan ikon status, dalam satu baris tipis.">Clock, current song and status icons in one thin line.</span></div>
-      </div>
-    </div>
-  </div>
-</section>
-
 <section class="band" id="numbers">
   <div class="wrap">
     <h2 data-id="Angka terukur">Measured</h2>
@@ -291,19 +272,6 @@ footer a{color:#fff}
   </div>
 </section>
 
-<section class="cob" id="limits">
-  <div class="wrap">
-    <h2 data-id="Yang belum beres">Not finished</h2>
-    <p class="sub" data-id="Batasan yang saya tahu sekarang.">The limits I know about today.</p>
-    <ul class="warn">
-      <li data-id="Baru diuji di satu perangkat. Di tablet lain, hasilnya mungkin berbeda.">Tested on one device only. Other tablets may behave differently.</li>
-      <li data-id="Panel volume bawaan sistem masih ikut muncul bersama HUD volume.">The system volume panel still appears together with the volume HUD.</li>
-      <li data-id="Baterai headphone Bluetooth belum ditampilkan.">Bluetooth headphone battery is not shown yet.</li>
-      <li data-id="Deteksi layar penuh bisa berbeda di perangkat lain.">Fullscreen detection may behave differently elsewhere.</li>
-    </ul>
-  </div>
-</section>
-
 <section id="faq">
   <div class="wrap">
     <h2>FAQ</h2>
@@ -314,16 +282,16 @@ footer a{color:#fff}
   </div>
 </section>
 
-<section id="support" hidden>
+<section class="cob" id="support">
   <div class="wrap">
-    <h2 data-id="Dukung proyek ini">Support the project</h2>
-    <p class="sub" data-id="Aplikasinya gratis dan akan tetap gratis. Kalau berguna buatmu, traktir kopi membantu saya terus memperbaikinya.">The app is free and will stay free. If it is useful to you, a coffee helps me keep improving it.</p>
-    <a class="btn" id="donate" href="#" rel="noopener" style="background:var(--ink);color:#fff" data-id="Traktir kopi">Buy me a coffee</a>
+    <h2 data-id="Dukung Supernova Notch">Support Supernova Notch</h2>
+    <p class="sub" data-id="Aplikasinya gratis dan akan tetap gratis. Dukunganmu membantu Supernova Notch terus berkembang.">The app is free and will stay free. Your support helps Supernova Notch keep growing.</p>
+    <a class="btn" id="donate" href="#support" rel="noopener" aria-disabled="true" style="background:#fff;color:var(--ink);border-color:#fff" data-id="Donasi">Donate</a>
   </div>
 </section>
 
 <footer>
-  <div class="wrap"><p id="cred" hidden style="margin:0 0 10px"></p><span data-id="Dibuat oleh satu orang, lisensi MIT.">Made by one person, MIT license.</span> <a href="https://github.com/galoujang-sketch/supernova-notch">GitHub</a> · <a href="https://github.com/galoujang-sketch/supernova-notch/issues" data-id="Laporkan masalah">Report a problem</a></div>
+  <div class="wrap"><p id="cred" hidden style="margin:0 0 10px"></p><span data-id="Dibuat oleh Supernova.">Made by Supernova.</span> <span data-id="Terinspirasi dari">Inspired by</span> <a href="https://rama2555.github.io/nusa/" rel="noopener">Nusa</a> · <a href="https://github.com/galoujang-sketch/supernova-notch">GitHub</a> · <a href="https://github.com/galoujang-sketch/supernova-notch/issues" data-id="Laporkan masalah">Report a problem</a></div>
 </footer>
 
 <script>
@@ -371,7 +339,7 @@ footer a{color:#fff}
   var srz;window.addEventListener('resize',function(){clearTimeout(srz);srz=setTimeout(function(){ssize();sdraw(0)},150)});
   /* donate: fill in the link to show the section */
   var DONATE_URL='';
-  if(DONATE_URL){document.getElementById('donate').href=DONATE_URL;document.getElementById('support').hidden=false}
+  var dn=document.getElementById('donate');if(DONATE_URL){dn.href=DONATE_URL;dn.removeAttribute('aria-disabled')}else{dn.addEventListener('click',function(e){e.preventDefault()});dn.style.opacity='.6';dn.style.cursor='default';dn.title='Link donasi segera hadir'}
   var scr=document.getElementById('screen'),tabs=[].slice.call(document.querySelectorAll('#tabs button'));
   
   /* date pill, status bar clock */

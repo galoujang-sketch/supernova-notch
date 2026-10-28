@@ -6,6 +6,8 @@ A Dynamic Island–style notch for Android tablets. It sits at the top edge of t
 
 **Website:** https://galoujang-sketch.github.io/supernova-notch/ · **[Download APK](https://github.com/galoujang-sketch/supernova-notch/releases/latest/download/SupernovaNotch.apk)**
 
+Inspired by [Nusa](https://rama2555.github.io/nusa/), which was the reference for building this app. / Terinspirasi dari [Nusa](https://rama2555.github.io/nusa/), yang jadi referensi untuk membuat aplikasi ini.
+
 **English** · [Bahasa Indonesia](#bahasa-indonesia)
 
 ## Features
