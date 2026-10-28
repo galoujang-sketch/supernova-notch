@@ -54,7 +54,7 @@ class NotchView(private val ctx: Context, private val wm: WindowManager) : Frame
     private fun dpf(v: Float) = v * density
 
     private val collapsedW = dp(190)
-    private val collapsedH = dp(34)
+    private val collapsedH = dp(30)
     private val expandedW = min(dp(400), ctx.resources.displayMetrics.widthPixels - dp(24))
     private val expandedH = dp(176)
 
@@ -73,7 +73,7 @@ class NotchView(private val ctx: Context, private val wm: WindowManager) : Frame
         PixelFormat.TRANSLUCENT
     ).also {
         it.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-        it.y = dp(4)
+        it.y = 0
     }
 
     private var expanded = false
@@ -222,7 +222,8 @@ class NotchView(private val ctx: Context, private val wm: WindowManager) : Frame
         clipToOutline = true
         outlineProvider = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
-                outline.setRoundRect(0, 0, view.width, view.height, cornerPx)
+                // Persegi dimulai di atas layar supaya sudut atas terpotong (rata dengan tepi layar).
+                outline.setRoundRect(0, (-cornerPx).toInt(), view.width, view.height, cornerPx)
             }
         }
         addView(collapsedLabel)
@@ -328,7 +329,7 @@ class NotchView(private val ctx: Context, private val wm: WindowManager) : Frame
         params.height = (collapsedH + (expandedH - collapsedH) * t).toInt()
 
         cornerPx = collapsedH / 2f + (dpf(30f) - collapsedH / 2f) * t
-        bg.cornerRadius = cornerPx
+        bg.cornerRadii = floatArrayOf(0f, 0f, 0f, 0f, cornerPx, cornerPx, cornerPx, cornerPx)
         invalidateOutline()
 
         collapsedLabel.alpha = (1f - t * 2.5f).coerceIn(0f, 1f)
