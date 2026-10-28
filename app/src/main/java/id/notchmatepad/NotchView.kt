@@ -916,28 +916,17 @@ class NotchView(
         return bmp
     }
 
-    /** Cover dari notifikasi media aplikasi pemutar; hasilnya disimpan supaya tidak digambar ulang tiap 3 detik. */
-    private fun notificationArt(pkg: String): Bitmap? {
-        val list = try {
-            MediaWatcher.instance?.activeNotifications
-        } catch (e: Exception) {
-            null
-        } ?: return notifArt
-        val mine = list.filter { it.packageName == pkg }
-        val sbn = mine.firstOrNull { it.notification.category == android.app.Notification.CATEGORY_TRANSPORT }
-            ?: mine.firstOrNull()
-            ?: return null
-        val key = sbn.key + "|" + sbn.postTime
-        if (key == notifArtKey) return notifArt
+    private var lastRebind = 0L
+
+    private fun artFromNotification(n: android.app.Notification): Bitmap? {
         var bmp: Bitmap? = null
         try {
-            val n = sbn.notification
             val ex = n.extras
             @Suppress("DEPRECATION")
-            val big = ex.get(android.app.Notification.EXTRA_LARGE_ICON_BIG)
-            @Suppress("DEPRECATION")
-            val small = ex.get(android.app.Notification.EXTRA_LARGE_ICON)
-            for (o in listOf(big, small)) {
+            val cands = listOf(ex.get(android.app.Notification.EXTRA_LARGE_ICON_BIG),
+                ex.get(android.app.Notification.EXTRA_LARGE_ICON),
+                ex.get(android.app.Notification.EXTRA_PICTURE))
+            for (o in cands) {
                 if (bmp != null) break
                 bmp = when (o) {
                     is Bitmap -> o
@@ -945,14 +934,45 @@ class NotchView(
                     else -> null
                 }
             }
-            if (bmp == null) {
-                bmp = n.getLargeIcon()?.loadDrawable(ctx)?.let { toBitmap(it) }
-            }
+            if (bmp == null) bmp = n.getLargeIcon()?.loadDrawable(ctx)?.let { toBitmap(it) }
         } catch (e: Exception) {
         }
-        notifArtKey = key
-        notifArt = bmp
         return bmp
+    }
+
+    /** Cover dari notifikasi media aplikasi pemutar; hasil disimpan per notifikasi, kegagalan tidak disimpan. */
+    private fun notificationArt(pkg: String): Bitmap? {
+        val w = MediaWatcher.instance
+        if (w == null) {
+            val now = System.currentTimeMillis()
+            if (now - lastRebind > 15000) {
+                lastRebind = now
+                try {
+                    android.service.notification.NotificationListenerService.requestRebind(
+                        ComponentName(ctx, MediaWatcher::class.java))
+                } catch (e: Exception) {
+                }
+            }
+            return notifArt
+        }
+        val list = try {
+            w.activeNotifications
+        } catch (e: Exception) {
+            null
+        } ?: return notifArt
+        val mine = list.filter { it.packageName == pkg }
+            .sortedByDescending { it.notification.category == android.app.Notification.CATEGORY_TRANSPORT }
+        for (sbn in mine) {
+            val key = sbn.key + "|" + sbn.postTime
+            if (key == notifArtKey && notifArt != null) return notifArt
+            val bmp = artFromNotification(sbn.notification)
+            if (bmp != null) {
+                notifArtKey = key
+                notifArt = bmp
+                return bmp
+            }
+        }
+        return null
     }
 
     private fun findArt(md: MediaMetadata?, c: MediaController?): Bitmap? {
