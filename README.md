@@ -46,6 +46,16 @@ A Dynamic Island–style notch for Android tablets. It sits at the top edge of t
 
 **Why not on the Play Store?** It relies on an Accessibility service for a display feature, which the Play Store restricts. It is distributed as an APK instead.
 
+**How much RAM does it use?** Not measured precisely yet. The app has no third-party libraries and draws everything with simple shapes, so it is expected to stay small, in the range of tens of megabytes (a rough estimate, to be replaced with measured numbers). To check on your device: *Settings → Apps → Supernova Notch → Memory*, or Developer options → *Running services*.
+
+**How much battery does it use?** Not measured precisely yet. What affects power:
+- **Screen off**: nothing is drawn.
+- **Idle scene**: drawn at 20 fps for the first 5 minutes, then frozen into a still image (no further cost).
+- **Music playing**: the notch refreshes about twice a second, and scrolling lyrics are drawn at about 30 fps while the top strip is visible.
+- **Fullscreen apps**: the notch hides and stops drawing.
+
+It should be a small share of daily usage; check *Settings → Battery → Battery usage* after a day of normal use. If it is too high for you, turn off lyrics-heavy use (pause music) or turn off clean mode in the app.
+
 **How do I update?** Install the newer APK over the old one.
 
 ## Known limitations
@@ -88,6 +98,8 @@ Notch ala Dynamic Island untuk tablet Android. Menempel di tepi atas layar, dan 
 - *Kenapa ada strip hitam?* Aplikasi tidak bisa menyembunyikan status bar, hanya menutupnya. Strip muncul saat musik main.
 - *Notch hilang sendiri?* Matikan hemat baterai untuk aplikasi ini.
 - *Lirik tidak muncul?* Lagu tidak ada di database LRCLIB.
+- *Berapa RAM yang dipakai?* Belum diukur dengan tepat. Aplikasi tanpa pustaka pihak ketiga dan menggambar semuanya dengan bentuk sederhana, jadi diperkirakan kecil, sekitar puluhan megabita (perkiraan kasar, akan diganti dengan angka terukur). Cek di *Pengaturan → Aplikasi → Supernova Notch → Memori*, atau Opsi pengembang → *Layanan yang berjalan*.
+- *Berapa persen baterai yang dipakai?* Belum diukur dengan tepat. Layar mati: tidak ada yang digambar. Adegan idle: 20 bingkai per detik selama 5 menit pertama, lalu dibekukan jadi gambar diam. Musik main: notch menyegarkan diri sekitar dua kali per detik dan lirik berjalan sekitar 30 bingkai per detik selama strip tampil. Aplikasi layar penuh: notch tersembunyi dan berhenti menggambar. Cek di *Pengaturan → Baterai → Penggunaan baterai* setelah sehari pemakaian normal.
 - *Cara memperbarui?* Pasang APK terbaru di atas yang lama.
 
 Lisensi: [MIT](LICENSE).
