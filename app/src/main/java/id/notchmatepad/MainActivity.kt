@@ -28,6 +28,7 @@ class MainActivity : Activity() {
     private lateinit var batteryStatus: TextView
     private lateinit var accessStatus: TextView
     private lateinit var stripBtn: Button
+    private lateinit var fsBtn: Button
     private lateinit var toggle: Button
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
@@ -90,6 +91,12 @@ class MainActivity : Activity() {
         }
         column.addView(stripBtn)
 
+        fsBtn = button("") {
+            Store.setHideInFullscreen(this, !Store.hideInFullscreen(this))
+            refresh()
+        }
+        column.addView(fsBtn)
+
         toggle = button("") { toggleService() }
         column.addView(
             toggle,
@@ -128,6 +135,9 @@ class MainActivity : Activity() {
 
         stripBtn.text = "Mode bersih (status bar ditutup, info pindah ke notch): " +
             if (Store.stripEnabled(this)) "AKTIF" else "MATI"
+
+        fsBtn.text = "Sembunyi saat layar penuh (video, game): " +
+            if (Store.hideInFullscreen(this)) "AKTIF" else "MATI"
 
         if (access) {
             toggle.text = "Notch dijalankan oleh Aksesibilitas"

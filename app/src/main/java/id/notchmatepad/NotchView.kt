@@ -500,6 +500,25 @@ class NotchView(
 
     // ---------------------------------------------------------------- buka / tutup
 
+    /** Sembunyikan notch saat aplikasi layar penuh: memudar dan tidak lagi menangkap sentuhan. */
+    fun setFullscreenHidden(hidden: Boolean) {
+        if (hidden) setExpanded(false)
+        animate().cancel()
+        if (hidden) {
+            animate().alpha(0f).setDuration(350).start()
+            params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        } else {
+            animate().alpha(1f).setDuration(350).start()
+            params.flags = params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+        }
+        if (isAttachedToWindow) {
+            try {
+                wm.updateViewLayout(this, params)
+            } catch (e: Exception) {
+            }
+        }
+    }
+
     private fun setExpanded(value: Boolean) {
         if (expanded == value) return
         expanded = value

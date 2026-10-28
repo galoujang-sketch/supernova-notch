@@ -4,6 +4,11 @@ import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.PixelFormat
+import android.os.Handler
+import android.os.Looper
+import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 
@@ -21,6 +26,74 @@ class NotchAccessibilityService : AccessibilityService() {
 
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == "strip") build()
+        if (key == "fs_hide") {
+            if (!Store.hideInFullscreen(this)) applyFullscreen(false)
+        }
+    }
+
+    // Probe 1px tanpa FLAG_LAYOUT_IN_SCREEN: sistem menempatkannya di bawah status bar. Bila status bar
+    // tersembunyi (aplikasi layar penuh), posisinya naik ke y = 0.
+    private val ui = Handler(Looper.getMainLooper())
+    private var probe: View? = null
+    private var fullscreen = false
+    private var fsVotes = 0
+    private val loc = IntArray(2)
+
+    private val probeTick = object : Runnable {
+        override fun run() {
+            val p = probe
+            if (p != null && Store.hideInFullscreen(this@NotchAccessibilityService)) {
+                p.getLocationOnScreen(loc)
+                val atTop = p.isAttachedToWindow && p.height > 0 && loc[1] <= 0
+                // Butuh dua bacaan berturut-turut yang sama supaya tidak berkedip.
+                if (atTop != fullscreen) {
+                    fsVotes++
+                    if (fsVotes >= 2) {
+                        fsVotes = 0
+                        applyFullscreen(atTop)
+                    }
+                } else {
+                    fsVotes = 0
+                }
+            }
+            ui.postDelayed(this, 500)
+        }
+    }
+
+    private fun applyFullscreen(fs: Boolean) {
+        fullscreen = fs
+        notch?.setFullscreenHidden(fs)
+        strip?.setFullscreen(fs)
+    }
+
+    private fun attachProbe(wm: WindowManager) {
+        detachProbe(wm)
+        val v = View(this)
+        val lp = WindowManager.LayoutParams(
+            1, 1,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+            PixelFormat.TRANSLUCENT
+        ).also {
+            it.gravity = Gravity.TOP or Gravity.START
+            it.x = 0
+            it.y = 0
+        }
+        try {
+            wm.addView(v, lp)
+            probe = v
+        } catch (e: Exception) {
+        }
+    }
+
+    private fun detachProbe(wm: WindowManager) {
+        probe?.let {
+            try {
+                wm.removeView(it)
+            } catch (e: Exception) {
+            }
+        }
+        probe = null
     }
 
     override fun onServiceConnected() {
@@ -38,6 +111,10 @@ class NotchAccessibilityService : AccessibilityService() {
         val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
 
+        attachProbe(wm)
+        ui.removeCallbacks(probeTick)
+        ui.post(probeTick)
+
         var stripHeight = 0
         if (Store.stripEnabled(this)) {
             stripHeight = statusBarHeight()
@@ -49,6 +126,7 @@ class NotchAccessibilityService : AccessibilityService() {
             it.onPlaying = { p -> strip?.setShown(p) }
             it.attach()
         }
+        if (fullscreen) applyFullscreen(true)
     }
 
     private fun statusBarHeight(): Int {
@@ -79,6 +157,8 @@ class NotchAccessibilityService : AccessibilityService() {
     }
 
     private fun detachViews() {
+        ui.removeCallbacks(probeTick)
+        detachProbe(getSystemService(Context.WINDOW_SERVICE) as WindowManager)
         notch?.detach()
         notch = null
         strip?.detach()

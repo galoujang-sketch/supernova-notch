@@ -109,15 +109,30 @@ class StatusStrip(
         }
     }
 
-    /** Tampilkan/sembunyikan strip dengan fade; saat tersembunyi status bar asli terlihat. */
+    private var wantShown = false
+    private var fsHidden = false
+
+    /** Strip tampil hanya saat musik main (fade); saat tersembunyi status bar asli terlihat. */
     fun setShown(show: Boolean) {
+        wantShown = show
+        applyVisibility()
+    }
+
+    /** Sembunyikan sementara saat aplikasi layar penuh. */
+    fun setFullscreen(fs: Boolean) {
+        fsHidden = fs
+        applyVisibility()
+    }
+
+    private fun applyVisibility() {
+        val show = wantShown && !fsHidden
         animate().cancel()
         if (show) {
             visibility = VISIBLE
             animate().alpha(1f).setDuration(500).start()
         } else {
             animate().alpha(0f).setDuration(500).withEndAction {
-                items.clear()
+                if (!wantShown) items.clear()
                 visibility = INVISIBLE
             }.start()
         }

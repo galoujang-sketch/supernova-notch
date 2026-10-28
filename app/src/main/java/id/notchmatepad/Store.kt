@@ -28,6 +28,13 @@ object Store {
         prefs(c).edit().putInt("water_ml", max(0, current + ml)).apply()
     }
 
+    /** Sembunyikan notch dan strip saat aplikasi layar penuh (video, game). Default aktif. */
+    fun hideInFullscreen(c: Context): Boolean = prefs(c).getBoolean("fs_hide", true)
+
+    fun setHideInFullscreen(c: Context, value: Boolean) {
+        prefs(c).edit().putBoolean("fs_hide", value).apply()
+    }
+
     fun focusMin(c: Context): Int = prefs(c).getInt("focus_min", 25)
     fun breakMin(c: Context): Int = prefs(c).getInt("break_min", 5)
     fun setFocusMin(c: Context, v: Int) = prefs(c).edit().putInt("focus_min", v.coerceIn(5, 120)).apply()
