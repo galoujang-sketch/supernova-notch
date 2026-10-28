@@ -116,7 +116,10 @@ class StatusInfo(private val ctx: Context) {
         val scale = i.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
         val status = i.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
         batteryPct = if (level >= 0) level * 100 / max(1, scale) else 0
-        charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+        // EXTRA_PLUGGED lebih andal daripada status saja (sebagian perangkat melaporkan status lain saat terhubung).
+        val plugged = i.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
+        charging = plugged != 0 ||
+            status == BatteryManager.BATTERY_STATUS_CHARGING ||
             status == BatteryManager.BATTERY_STATUS_FULL
     }
 
@@ -235,10 +238,41 @@ class StatusInfo(private val ctx: Context) {
         c.drawRoundRect(rect, dp(1.2f), dp(1.2f), fill)
         fill.color = fg
 
+        if (charging) drawBolt(c, (bodyLeft + bodyRight) / 2f, cy, bh)
+
         val pct = "$batteryPct%"
         val tw = pctPaint.measureText(pct)
         c.drawText(pct, bodyLeft - dp(6f) - tw, baseline(pctPaint, cy), pctPaint)
         return bodyLeft - dp(6f) - tw - dp(12f)
+    }
+
+    /** Ikon petir di atas badan baterai: tepi gelap dulu supaya terbaca di atas isian, lalu isi putih. */
+    private fun drawBolt(c: Canvas, cx: Float, cy: Float, h: Float) {
+        val bh = h * 1.25f
+        val bw = bh * 0.55f
+        val l = cx - bw / 2f
+        val t = cy - bh / 2f
+        fun px(v: Float) = l + bw * v
+        fun py(v: Float) = t + bh * v
+        path.reset()
+        path.moveTo(px(0.62f), py(0f))
+        path.lineTo(px(0.05f), py(0.58f))
+        path.lineTo(px(0.45f), py(0.58f))
+        path.lineTo(px(0.33f), py(1f))
+        path.lineTo(px(0.95f), py(0.4f))
+        path.lineTo(px(0.55f), py(0.4f))
+        path.close()
+        val oldStyle = stroke.style
+        stroke.style = Paint.Style.FILL_AND_STROKE
+        stroke.strokeWidth = dp(2.2f)
+        stroke.color = bar
+        c.drawPath(path, stroke)
+        stroke.style = oldStyle
+        stroke.strokeWidth = dp(1.6f)
+        stroke.color = fg
+        fill.color = Color.parseColor("#FFD60A")
+        c.drawPath(path, fill)
+        fill.color = fg
     }
 
     private fun drawWifi(c: Canvas, right: Float, cy: Float): Float {
