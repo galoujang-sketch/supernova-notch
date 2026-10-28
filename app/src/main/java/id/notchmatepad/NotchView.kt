@@ -395,6 +395,53 @@ class NotchView(
         addView(dots, LinearLayout.LayoutParams(MATCH, dp(10)))
     }
 
+    // ---- Maskot Nova: muncul di pil biasa saat idle, "bangun" dengan kilatan saat pengguna kembali.
+    private val mascot = MascotView(ctx).apply {
+        layoutParams = FrameLayout.LayoutParams(pillW, pillH, Gravity.TOP or Gravity.CENTER_HORIZONTAL)
+        visibility = View.INVISIBLE
+    }
+    private var mascotT = 0f
+    private var mascotAnim: ValueAnimator? = null
+    private var dozing = false
+    private var wokeByTouch = false
+    private var lastActive = SystemClock.elapsedRealtime()
+
+    private fun markActive() {
+        lastActive = SystemClock.elapsedRealtime()
+    }
+
+    private fun fadeMascot(to: Float) {
+        mascotAnim?.cancel()
+        mascotAnim = ValueAnimator.ofFloat(mascotT, to).apply {
+            duration = 450
+            addUpdateListener {
+                mascotT = it.animatedValue as Float
+                applyProgress(progress)
+            }
+            start()
+        }
+    }
+
+    private fun startDoze() {
+        if (dozing) return
+        dozing = true
+        mascot.startDoze()
+        fadeMascot(1f)
+    }
+
+    /** Pengguna kembali: orb berputar, menyatu, meledak; setelah itu pil kembali ke tanggal. */
+    private fun wakeMascot(animate: Boolean) {
+        if (!dozing) return
+        dozing = false
+        markActive()
+        if (animate) {
+            mascot.onWakeDone = { fadeMascot(0f) }
+            mascot.startWake()
+        } else {
+            fadeMascot(0f)
+        }
+    }
+
     private val hudView = HudView(ctx).apply {
         layoutParams = FrameLayout.LayoutParams(hudW, hudH, Gravity.TOP or Gravity.CENTER_HORIZONTAL)
         visibility = View.INVISIBLE
@@ -408,6 +455,13 @@ class NotchView(
             if (tickCount % 6 == 0) refreshSessions()
             if (stripHeight > 0 && tickCount % 4 == 0) info.readAll()
             handleTimerFinish()
+            val busy = modeT > 0f || playing || timerRunning || expanded || hudActive || fsHidden
+            if (busy) {
+                markActive()
+                if (dozing) wakeMascot(false)
+            } else if (!dozing && SystemClock.elapsedRealtime() - lastActive > 90_000L) {
+                startDoze()
+            }
             updateCollapsed()
             if (expanded) {
                 if (page == 0) {
@@ -439,6 +493,7 @@ class NotchView(
         }
         info.setTheme(themeDark)
         addView(collapsedLabel)
+        addView(mascot)
         if (stripHeight > 0) addView(infoBar)
         addView(expandedBox)
         addView(hudView)
@@ -504,6 +559,9 @@ class NotchView(
                 return true
             }
             MotionEvent.ACTION_DOWN -> {
+                wokeByTouch = dozing
+                if (dozing) wakeMascot(true)
+                markActive()
                 downX = ev.x
                 downY = ev.y
                 swipeLocked = false
@@ -513,7 +571,7 @@ class NotchView(
                 val dx = ev.x - downX
                 val dy = ev.y - downY
                 if (!expanded) {
-                    if (abs(dx) < dp(12) && abs(dy) < dp(12)) setExpanded(true)
+                    if (!wokeByTouch && abs(dx) < dp(12) && abs(dy) < dp(12)) setExpanded(true)
                 } else if (!swipeLocked && abs(dx) > dp(56) && abs(dx) > abs(dy)) {
                     changePage(if (dx < 0) 1 else -1)
                 } else if (!swipeLocked && dy < -dp(40) && abs(dy) > abs(dx)) {
@@ -579,6 +637,8 @@ class NotchView(
     private val hudReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
             when (i.action) {
+                Intent.ACTION_SCREEN_OFF -> if (modeT == 0f && !playing && !timerRunning) startDoze()
+                Intent.ACTION_SCREEN_ON, Intent.ACTION_USER_PRESENT -> wakeMascot(true)
                 Intent.ACTION_POWER_CONNECTED -> showHud(HudView.CHARGE, "Mengisi daya", "${batteryPct()}%")
                 Intent.ACTION_POWER_DISCONNECTED -> showHud(HudView.UNPLUG, "Daya dicabut", "${batteryPct()}%")
                 "android.media.VOLUME_CHANGED_ACTION" -> {
@@ -634,6 +694,9 @@ class NotchView(
                 addAction(Intent.ACTION_POWER_CONNECTED)
                 addAction(Intent.ACTION_POWER_DISCONNECTED)
                 addAction("android.media.VOLUME_CHANGED_ACTION")
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_SCREEN_OFF)
+                addAction(Intent.ACTION_USER_PRESENT)
             }
             ctx.registerReceiver(hudReceiver, f)
         } catch (e: Exception) {
@@ -728,8 +791,10 @@ class NotchView(
 
         val a = (1f - t * 2.5f).coerceIn(0f, 1f)
         val hide = if (t > 0.45f) View.INVISIBLE else View.VISIBLE
-        collapsedLabel.alpha = a * (1f - modeT)
+        collapsedLabel.alpha = a * (1f - modeT) * (1f - mascotT)
         collapsedLabel.visibility = if (modeT >= 0.99f) View.INVISIBLE else hide
+        mascot.alpha = a * (1f - modeT) * mascotT
+        mascot.visibility = if (modeT >= 0.99f || mascotT <= 0.01f) View.INVISIBLE else hide
         infoBar.alpha = a * modeT
         infoBar.visibility = if (modeT <= 0.01f) View.INVISIBLE else hide
         val fade = ((t - 0.45f) * 2f).coerceIn(0f, 1f)
