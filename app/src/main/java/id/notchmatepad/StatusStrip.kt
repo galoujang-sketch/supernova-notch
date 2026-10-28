@@ -49,17 +49,33 @@ class StatusStrip(
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
     private val barH = barHeight
-    private var lyric: String? = null
-    private var textW = 0f
-    private var startMs = 0L
-    private var running = false
+    private class Item(val text: String, val w: Float, val x0: Float, val start: Long)
 
-    /** Lirik bergulir dari kiri ke kanan; tab notch menutupinya saat lewat (jendela notch di atas strip). */
+    private val items = ArrayList<Item>()
+    private var running = false
+    private val speed = 70f * d // px per detik
+    private val gap = 28f * d
+
+    private fun xOf(i: Item, now: Long) = i.x0 + (now - i.start) / 1000f * speed
+
+    /**
+     * Gaya karaoke: tiap baris baru masuk dari tepi kiri dan terus berjalan sampai keluar di
+     * tepi kanan, tanpa menghapus baris sebelumnya. Tab notch menutupinya saat lewat
+     * (jendela notch ada di atas strip). Null = hapus semua.
+     */
     fun setLyric(text: String?) {
-        lyric = text?.takeIf { it.isNotBlank() }
-        textW = lyric?.let { lyricPaint.measureText(it) } ?: 0f
-        startMs = System.currentTimeMillis()
-        if (lyric != null && !running) {
+        val t = text?.takeIf { it.isNotBlank() }
+        if (t == null) {
+            items.clear()
+            invalidate()
+            return
+        }
+        val now = System.currentTimeMillis()
+        val w = lyricPaint.measureText(t)
+        var x0 = -w
+        items.lastOrNull()?.let { x0 = minOf(x0, xOf(it, now) - gap - w) }
+        items.add(Item(t, w, x0, now))
+        if (!running) {
             running = true
             ui.post(frame)
         }
@@ -68,8 +84,11 @@ class StatusStrip(
 
     private val frame = object : Runnable {
         override fun run() {
-            if (lyric == null) {
+            val now = System.currentTimeMillis()
+            items.removeAll { xOf(it, now) > width }
+            if (items.isEmpty()) {
                 running = false
+                invalidate()
                 return
             }
             invalidate()
@@ -79,12 +98,14 @@ class StatusStrip(
 
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(Color.BLACK)
-        val t = lyric ?: return
-        val speed = 70f * d // px per detik
-        val travel = width + textW
-        val x = -textW + ((System.currentTimeMillis() - startMs) / 1000f * speed) % travel
+        if (items.isEmpty()) return
+        val now = System.currentTimeMillis()
         val y = barH / 2f - (lyricPaint.ascent() + lyricPaint.descent()) / 2f
-        canvas.drawText(t, x, y, lyricPaint)
+        for (i in items) {
+            val x = xOf(i, now)
+            if (x + i.w < 0f || x > width) continue
+            canvas.drawText(i.text, x, y, lyricPaint)
+        }
     }
 
     fun attach() {
@@ -95,7 +116,8 @@ class StatusStrip(
     }
 
     fun detach() {
-        lyric = null
+        items.clear()
+        running = false
         ui.removeCallbacksAndMessages(null)
         try {
             wm.removeView(this)
