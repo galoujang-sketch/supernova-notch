@@ -13,6 +13,15 @@
         android:maxSdkVersion="30" />
     <!-- Dibutuhkan untuk memuat ikon kecil notifikasi milik aplikasi lain di strip panel atas. -->
 
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+
+    <queries>
+        <package android:name="com.spotify.music" />
+        <package android:name="com.google.android.apps.youtube.music" />
+        <package android:name="com.google.android.youtube" />
+        <provider android:authorities="com.spotify.mobile.android.mediaapi" />
+    </queries>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
