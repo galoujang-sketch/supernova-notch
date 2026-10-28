@@ -4,6 +4,15 @@ import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.content.ComponentName
 import android.content.Context
+import android.os.BatteryManager
+import android.net.NetworkRequest
+import android.net.NetworkCapabilities
+import android.net.Network
+import android.net.ConnectivityManager
+import android.media.AudioManager
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.BroadcastReceiver
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -81,8 +90,17 @@ class NotchView(
     private var modeAnim: ValueAnimator? = null
     private val collapsedW get() = (pillW + (infoW - pillW) * modeT).toInt()
     private val collapsedH get() = (pillH + (infoH - pillH) * modeT).toInt()
-    private val expandedW = min(dp(640), ctx.resources.displayMetrics.widthPixels - dp(24))
-    private val expandedH = dp(200)
+    private val panelW = min(dp(640), ctx.resources.displayMetrics.widthPixels - dp(24))
+    private val panelH = dp(200)
+    private val hudW = min(dp(320), ctx.resources.displayMetrics.widthPixels - dp(24))
+    private val hudH = dp(64)
+
+    // Ukuran target saat "terbuka": panel penuh, atau pop-up HUD kecil.
+    private var expandedW = panelW
+    private var expandedH = panelH
+    private var hudActive = false
+    private var fsHidden = false
+    private var hudReady = false
 
     private val gray = Color.parseColor("#9A9AA0")
     private val cardColor = Color.parseColor("#1C1C1E")
@@ -372,9 +390,14 @@ class NotchView(
     private val expandedBox = LinearLayout(ctx).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(dp(22), dp(14), dp(22), dp(10))
-        layoutParams = FrameLayout.LayoutParams(expandedW, expandedH, Gravity.TOP or Gravity.CENTER_HORIZONTAL)
+        layoutParams = FrameLayout.LayoutParams(panelW, panelH, Gravity.TOP or Gravity.CENTER_HORIZONTAL)
         addView(pagesFrame, LinearLayout.LayoutParams(MATCH, 0, 1f))
         addView(dots, LinearLayout.LayoutParams(MATCH, dp(10)))
+    }
+
+    private val hudView = HudView(ctx).apply {
+        layoutParams = FrameLayout.LayoutParams(hudW, hudH, Gravity.TOP or Gravity.CENTER_HORIZONTAL)
+        visibility = View.INVISIBLE
     }
 
     private val autoCollapse = Runnable { setExpanded(false) }
@@ -418,6 +441,7 @@ class NotchView(
         addView(collapsedLabel)
         if (stripHeight > 0) addView(infoBar)
         addView(expandedBox)
+        addView(hudView)
         showPage(0)
         applyProgress(0f)
         updateMusic()
@@ -449,10 +473,12 @@ class NotchView(
             }
         }
         refreshSessions()
+        registerHud()
         ui.post(tick)
     }
 
     fun detach() {
+        unregisterHud()
         if (stripHeight > 0) MediaWatcher.onChange = null
         ui.removeCallbacksAndMessages(null)
         animator?.cancel()
@@ -502,6 +528,7 @@ class NotchView(
 
     /** Sembunyikan notch saat aplikasi layar penuh: memudar dan tidak lagi menangkap sentuhan. */
     fun setFullscreenHidden(hidden: Boolean) {
+        fsHidden = hidden
         if (hidden) setExpanded(false)
         animate().cancel()
         if (hidden) {
@@ -519,6 +546,146 @@ class NotchView(
         }
     }
 
+    // ---------------------------------------------------------------- HUD
+
+    private fun showHud(kind: Int, title: String, sub: String = "", frac: Float = -1f) {
+        if (!hudReady || fsHidden) return
+        if (expanded && !hudActive) return // panel sedang dibuka pengguna
+        hudView.kind = kind
+        hudView.title = title
+        hudView.sub = sub
+        hudView.frac = frac
+        hudView.invalidate()
+        if (!hudActive) {
+            hudActive = true
+            expandedW = hudW
+            expandedH = hudH
+            if (expanded) {
+                applyProgress(progress)
+            } else {
+                setExpanded(true)
+            }
+        }
+        resetAutoCollapse()
+    }
+
+    private fun batteryPct(): Int {
+        val i = ctx.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return 0
+        val level = i.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = i.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
+        return if (level >= 0) level * 100 / max(1, scale) else 0
+    }
+
+    private val hudReceiver = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) {
+            when (i.action) {
+                Intent.ACTION_POWER_CONNECTED -> showHud(HudView.CHARGE, "Mengisi daya", "${batteryPct()}%")
+                Intent.ACTION_POWER_DISCONNECTED -> showHud(HudView.UNPLUG, "Daya dicabut", "${batteryPct()}%")
+                "android.media.VOLUME_CHANGED_ACTION" -> {
+                    val stream = i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1)
+                    if (stream != AudioManager.STREAM_MUSIC && stream != AudioManager.STREAM_RING) return
+                    val v = i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE", -1)
+                    val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                    val mx = max(1, am.getStreamMaxVolume(stream))
+                    if (v >= 0) {
+                        showHud(
+                            HudView.VOLUME,
+                            if (stream == AudioManager.STREAM_RING) "Dering" else "Volume",
+                            "", v.toFloat() / mx
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private val brightnessObserver = object : android.database.ContentObserver(ui) {
+        override fun onChange(selfChange: Boolean) {
+            try {
+                val v = android.provider.Settings.System.getInt(
+                    ctx.contentResolver, android.provider.Settings.System.SCREEN_BRIGHTNESS
+                )
+                showHud(HudView.BRIGHTNESS, "Kecerahan", "", v / 255f)
+            } catch (e: Exception) {
+            }
+        }
+    }
+
+    private val audioCallback = object : android.media.AudioDeviceCallback() {
+        private fun isHeadphone(t: Int) = t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+            t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+            t == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+            t == android.media.AudioDeviceInfo.TYPE_USB_HEADSET
+
+        override fun onAudioDevicesAdded(added: Array<out android.media.AudioDeviceInfo>) {
+            val d = added.firstOrNull { it.isSink && isHeadphone(it.type) } ?: return
+            val name = d.productName?.toString()?.takeIf { it.isNotBlank() } ?: "Headphone"
+            showHud(HudView.HEADPHONE, name, "Tersambung")
+        }
+
+        override fun onAudioDevicesRemoved(removed: Array<out android.media.AudioDeviceInfo>) {
+            val d = removed.firstOrNull { it.isSink && isHeadphone(it.type) } ?: return
+            val name = d.productName?.toString()?.takeIf { it.isNotBlank() } ?: "Headphone"
+            showHud(HudView.HEADPHONE, name, "Terputus")
+        }
+    }
+
+    private val wifiCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onLost(network: Network) {
+            ui.post { showHud(HudView.WIFI_OFF, "Wi-Fi terputus") }
+        }
+
+        override fun onAvailable(network: Network) {
+            ui.post { showHud(HudView.WIFI_ON, "Wi-Fi tersambung") }
+        }
+    }
+
+    private fun registerHud() {
+        try {
+            val f = IntentFilter().apply {
+                addAction(Intent.ACTION_POWER_CONNECTED)
+                addAction(Intent.ACTION_POWER_DISCONNECTED)
+                addAction("android.media.VOLUME_CHANGED_ACTION")
+            }
+            ctx.registerReceiver(hudReceiver, f)
+        } catch (e: Exception) {
+        }
+        try {
+            ctx.contentResolver.registerContentObserver(
+                android.provider.Settings.System.getUriFor(android.provider.Settings.System.SCREEN_BRIGHTNESS),
+                false, brightnessObserver
+            )
+        } catch (e: Exception) {
+        }
+        try {
+            val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            am.registerAudioDeviceCallback(audioCallback, ui)
+        } catch (e: Exception) {
+        }
+        try {
+            val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            cm.registerNetworkCallback(
+                NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_WIFI).build(),
+                wifiCallback
+            )
+        } catch (e: Exception) {
+        }
+        // Callback terdaftar memicu peristiwa awal untuk perangkat yang sudah ada; abaikan sebentar.
+        ui.postDelayed({ hudReady = true }, 2500)
+    }
+
+    private fun unregisterHud() {
+        hudReady = false
+        try { ctx.unregisterReceiver(hudReceiver) } catch (e: Exception) {}
+        try { ctx.contentResolver.unregisterContentObserver(brightnessObserver) } catch (e: Exception) {}
+        try {
+            (ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager).unregisterAudioDeviceCallback(audioCallback)
+        } catch (e: Exception) {}
+        try {
+            (ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager).unregisterNetworkCallback(wifiCallback)
+        } catch (e: Exception) {}
+    }
+
     private fun setExpanded(value: Boolean) {
         if (expanded == value) return
         expanded = value
@@ -530,9 +697,18 @@ class NotchView(
                 progress = it.animatedValue as Float
                 applyProgress(progress)
             }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(a: android.animation.Animator) {
+                    if (!expanded && progress <= 0.001f && hudActive) {
+                        hudActive = false
+                        expandedW = panelW
+                        expandedH = panelH
+                    }
+                }
+            })
             start()
         }
-        if (value) {
+        if (value && !hudActive) {
             showPage(page)
             refreshSessions()
         }
@@ -541,7 +717,7 @@ class NotchView(
 
     private fun resetAutoCollapse() {
         ui.removeCallbacks(autoCollapse)
-        if (expanded) ui.postDelayed(autoCollapse, 10000)
+        if (expanded) ui.postDelayed(autoCollapse, if (hudActive) 2800L else 10000L)
     }
 
     /** Beralih antara pil biasa dan tab lebar + strip, dengan transisi halus. */
@@ -576,8 +752,12 @@ class NotchView(
         collapsedLabel.visibility = if (modeT >= 0.99f) View.INVISIBLE else hide
         infoBar.alpha = a * modeT
         infoBar.visibility = if (modeT <= 0.01f) View.INVISIBLE else hide
-        expandedBox.alpha = ((t - 0.45f) * 2f).coerceIn(0f, 1f)
-        expandedBox.visibility = if (t < 0.02f) View.INVISIBLE else View.VISIBLE
+        val fade = ((t - 0.45f) * 2f).coerceIn(0f, 1f)
+        val showable = if (t < 0.02f) View.INVISIBLE else View.VISIBLE
+        expandedBox.alpha = fade
+        expandedBox.visibility = if (hudActive) View.INVISIBLE else showable
+        hudView.alpha = fade
+        hudView.visibility = if (hudActive) showable else View.INVISIBLE
 
         if (isAttachedToWindow) {
             try {
