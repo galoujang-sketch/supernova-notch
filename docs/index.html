@@ -308,33 +308,82 @@ footer a{color:#fff}
   }
 
   /* idle pill: two stars orbit, merge and explode, like the app */
-  var nv=document.getElementById('nova'),ng=nv.getContext('2d'),NW=0,NH=0,nst=[],ndpr=1,nraf=0;
-  for(var q=0;q<30;q++)nst.push({x:Math.random(),y:Math.random(),r:.4+Math.random()*.9,p:Math.random()*6.28,s:.8+Math.random()*2});
+  var nv=document.getElementById('nova'),ng=nv.getContext('2d'),NW=0,NH=0,ndpr=1,nraf=0;
   function nsize(){var b=nv.getBoundingClientRect();ndpr=Math.min(devicePixelRatio||1,2);NW=Math.max(1,Math.round(b.width*ndpr));NH=Math.max(1,Math.round(b.height*ndpr));nv.width=NW;nv.height=NH}
-  function glowAt(x,y,r,a,c){var g=ng.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,'rgba('+c+','+a+')');g.addColorStop(.3,'rgba('+c+','+a*.45+')');g.addColorStop(1,'rgba('+c+',0)');ng.fillStyle=g;ng.beginPath();ng.arc(x,y,r,0,6.2832);ng.fill()}
-  function ndraw(t){
+  /* Port of the app's MascotView (Mascot.kt). Same shaders, same spiral, same flash. */
+  var G={
+    star:function(r,g,b){return[[0,'255,255,255',1],[.09,'255,255,255',.94],[.22,r+','+g+','+b,.67],[.46,r+','+g+','+b,.27],[.74,r+','+g+','+b,.09],[1,r+','+g+','+b,0]]},
+    burst:[[0,'255,255,255',1],[.18,'255,214,150',.92],[.5,'255,150,60',.59],[1,'255,150,60',0]],
+    shell:[[0,'0,0,0',0],[.5,'0,0,0',0],[.76,'255,150,60',.745],[.9,'230,70,120',.47],[1,'230,70,120',0]],
+    nA:[[0,'110,70,190',.35],[.55,'90,60,170',.13],[1,'90,60,170',0]],
+    nB:[[0,'40,120,200',.31],[.55,'30,90,170',.11],[1,'30,90,170',0]],
+    nC:[[0,'200,80,140',.18],[1,'200,80,140',0]],
+    tiny:null
+  };
+  G.blue=G.star(190,214,255);G.lilac=G.star(214,170,255);G.tiny=G.star(225,230,255);
+  var gcache={};
+  function grad(key,st){var g=gcache[key];if(!g){g=ng.createRadialGradient(0,0,0,0,0,1);st.forEach(function(q){g.addColorStop(q[0],'rgba('+q[1]+','+q[2]+')')});gcache[key]=g}return g}
+  var NK=0;function gk(st){if(!st._k)st._k='g'+(NK++);return st._k}
+  function glowAt(st,x,y,r,a,sx,sy){
+    if(a<=0.003||r<=0)return;
+    ng.save();ng.globalAlpha=Math.min(1,a);ng.translate(x,y);ng.scale(sx?r*sx:r,sy?r*sy:r);
+    ng.fillStyle=grad(gk(st)+ngen,st);ng.beginPath();ng.arc(0,0,1,0,6.2832);ng.fill();ng.restore();
+  }
+  var ngen=0;
+  function star(st,x,y,r,a,rot){
+    glowAt(st,x,y,r*3.4,a);
+    if(a>.35){var l=r*2.4,cr=Math.cos(rot)*l,sr=Math.sin(rot)*l;
+      ng.save();ng.globalAlpha=Math.min(1,a*95/255);ng.strokeStyle='#fff';ng.lineWidth=.7*D;ng.lineCap='round';ng.beginPath();
+      ng.moveTo(x-cr,y-sr);ng.lineTo(x+cr,y+sr);ng.moveTo(x+sr*.7,y-cr*.7);ng.lineTo(x-sr*.7,y+cr*.7);ng.stroke();ng.restore()}
+  }
+  var D=1,seed=7;
+  function rnd(){seed=(seed*16807)%2147483647;return seed/2147483647}
+  var bg=[];
+  function ring(cx,cy,w,h,a){if(a<=0)return;ng.save();ng.globalAlpha=Math.min(1,a/255);ng.strokeStyle='#B9C4FF';ng.lineWidth=.9*D;ng.beginPath();ng.ellipse(cx,cy,w,h,0,0,6.2832);ng.stroke();ng.restore()}
+  function space(t,a,W,H){
+    glowAt(G.nA,W*(.32+.18*Math.sin(t*.11)),H*(.5+.2*Math.cos(t*.09)),50*D,a);
+    glowAt(G.nB,W*(.70+.16*Math.cos(t*.08)),H*(.5+.2*Math.sin(t*.13)),44*D,a);
+    glowAt(G.nC,W*(.52+.22*Math.sin(t*.07+1)),H*(.55+.15*Math.cos(t*.1)),30*D,a);
+    for(var i=0;i<bg.length;i++){var q=bg[i],tw=.5+.5*Math.sin(t*q.s+q.p);glowAt(G.tiny,q.x*W,q.y*H,q.r*D*3.2,(.25+.75*tw)*a*.8)}
+  }
+  function ripples(cx,cy,t,u,a){
+    for(var i=0;i<3;i++){var ph=(t*(.22+.5*u)+i/3)%1,w=(9+30*ph)*D,h=(3+10*ph)*D;
+      ring(cx,cy,w,h,(1-ph)*(1-ph)*70*a*(.4+.6*u))}
+  }
+  function flash(cx,cy,b,size){
+    var e=1-(1-b)*(1-b),a=1-b;
+    glowAt(G.burst,cx,cy,(3+size*e)*D*1.9,a*a);
+    var sh=(4+size*2.1*e)*D;glowAt(G.shell,cx,cy,sh,a*235/255,1.6,.62);
+    for(var k=0;k<2;k++){var bb=Math.max(0,Math.min(1,(b-.14*k)/(1-.14*k))),ee=1-(1-bb)*(1-bb);
+      ring(cx,cy,(6+72*ee)*D,(2+13*ee)*D,140*(1-bb)*(k===0?1:.6))}
+  }
+  function idleR(u){return 9*D*Math.pow(1-u,.8)+1.2*D}
+  function idleAng(u){return 6.2832*(5*u+12*u*u*u*u)}
+  function pair(cx,cy,x,size,a,t){
+    var step=.0035/(1+4*x*x*x);
+    for(var i=0;i<2;i++){var st=i?G.lilac:G.blue;
+      for(var k=12;k>=1;k--){var xx=x-k*step;if(xx<0)continue;var f=1-k/13,an=idleAng(xx)+i*3.14159,rr=idleR(xx);
+        glowAt(st,cx+rr*Math.cos(an),cy+rr*.55*Math.sin(an),size*(.55+.4*f),a*f*f*.5)}
+      var an2=idleAng(x)+i*3.14159,r2=idleR(x);
+      star(st,cx+r2*Math.cos(an2),cy+r2*.55*Math.sin(an2),size,a,t*.4+i)}
+  }
+  var nstart=0;
+  var CYC=8;
+  function ndraw(now){
     if(!NW)nsize();
-    var W=NW,H=NH,cx=W/2,cy=H*.55,U=H*.42,C=10,u=(t/1000%C)/C;
-    ng.fillStyle='#02030a';ng.fillRect(0,0,W,H);
-    var dx=Math.sin(t/4200)*W*.08;
-    glowAt(W*.3+dx,H*.5,W*.34,.32,'96,70,200');glowAt(W*.72-dx,H*.45,W*.3,.28,'40,100,210');
-    for(var i=0;i<nst.length;i++){var s=nst[i],a=.25+.75*(Math.sin(t/1000*s.s+s.p)*.5+.5);
-      ng.fillStyle='rgba(225,232,255,'+a*.85+')';ng.beginPath();ng.arc(s.x*W,s.y*H,s.r*ndpr,0,6.2832);ng.fill()}
-    var m=.62;
-    if(u<m){var k=u/m,r=U*Math.pow(1-k,.8)+U*.12,ang=6.2832*(5*k+12*k*k*k*k);
-      var x1=cx+Math.cos(ang)*r*2.4,y1=cy+Math.sin(ang)*r*.9,x2=cx-Math.cos(ang)*r*2.4,y2=cy-Math.sin(ang)*r*.9;
-      ng.strokeStyle='rgba(185,196,255,.28)';ng.lineWidth=ndpr*.9;ng.beginPath();ng.ellipse(cx,cy,r*2.4,r*.9,0,0,6.2832);ng.stroke();
-      glowAt(x1,y1,U*.8,.95,'190,214,255');glowAt(x2,y2,U*.8,.95,'214,170,255');
-    }else{var b=(u-m)/(1-m);
-      var fl=b<.18?b/.18:Math.max(0,1-(b-.18)/.5);
-      ng.strokeStyle='rgba(255,130,70,'+Math.max(0,.75*(1-b))+')';ng.lineWidth=ndpr*(2.2*(1-b)+.4);
-      ng.beginPath();ng.ellipse(cx,cy,W*.04+b*W*.4,H*.2+b*H*.5,0,0,6.2832);ng.stroke();
-      glowAt(cx,cy,U*(.6+b*3.2),Math.max(0,fl),'255,255,255');
-      glowAt(cx,cy,U*(.8+b*2),Math.max(0,.6*(1-b)),'255,150,90');
-      if(b<.9)glowAt(cx,cy,U*.55,Math.min(1,.7+fl),'255,255,255');}
+    var W=NW,H=NH;D=H/30;
+    if(!bg.length){seed=7;for(var q=0;q<22;q++)bg.push({x:rnd(),y:rnd(),r:.45+rnd()*.65,p:rnd()*6.28,s:.6+rnd()*1.6})}
+    ngen=W+'x'+H;
+    ng.setTransform(1,0,0,1,0,0);ng.globalAlpha=1;ng.fillStyle='#000';ng.fillRect(0,0,W,H);
+    var t=(now-nstart)/1000,cx=W/2,cy=H/2;
+    space(t,1,W,H);
+    var cyc=(t%CYC)/CYC;
+    if(cyc<.82){var fade=Math.min(1,cyc/.06),u=Math.max(0,Math.min(1,(cyc-.04)/.78));
+      ripples(cx,cy,t,u,fade);pair(cx,cy,u,(2.1+u)*D,.95*fade,t)}
+    else if(cyc<.95){flash(cx,cy,(cyc-.82)/.13,11)}
   }
   function nloop(t){ndraw(t);if(scr.getAttribute('data-s')==='idle'&&!RM)nraf=requestAnimationFrame(nloop);else nraf=0}
-  function nkick(){nsize();if(RM){ndraw(7000)}else if(!nraf)nraf=requestAnimationFrame(nloop)}
+  function nkick(){nsize();nstart=performance.now();if(RM){ndraw(nstart+CYC*.5*1000)}else if(!nraf)nraf=requestAnimationFrame(nloop)}
   if(window.ResizeObserver)new ResizeObserver(function(){nsize()}).observe(nv);
   tabs.forEach(function(b){b.addEventListener('click',function(){stopped=true;show(b.getAttribute('data-k'))})});
   scr.addEventListener('mouseenter',function(){hover=true});scr.addEventListener('mouseleave',function(){hover=false});
