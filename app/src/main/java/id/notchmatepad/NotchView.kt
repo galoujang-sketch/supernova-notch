@@ -874,7 +874,6 @@ class NotchView(
             }
             artTrackKey = trackKey
         } else if (trackKey != artTrackKey) {
-            diagArt(md, c)
             lastArt = null
             artV.setImageBitmap(null)
             artTrackKey = trackKey
@@ -974,40 +973,6 @@ class NotchView(
             }
         }
         return null
-    }
-
-    private fun diagArt(md: MediaMetadata?, c: MediaController?) {
-        val sb = StringBuilder("ART2 ")
-        try {
-            val w = MediaWatcher.instance
-            sb.append("listener=").append(if (w == null) "NULL" else "ok").append(' ')
-            if (w != null && c != null) {
-                val l = w.activeNotifications.filter { it.packageName == c.packageName }
-                sb.append("notif=").append(l.size)
-                for (n in l) {
-                    sb.append(" [li=").append(if (n.notification.getLargeIcon() != null) "Y" else "n")
-                    val ex = n.notification.extras
-                    @Suppress("DEPRECATION")
-                    sb.append(" ex=").append(if (ex.get(android.app.Notification.EXTRA_LARGE_ICON) != null) "Y" else "n")
-                    @Suppress("DEPRECATION")
-                    sb.append(if (ex.get(android.app.Notification.EXTRA_LARGE_ICON_BIG) != null) "Y" else "n").append("]")
-                }
-            }
-        } catch (e: Exception) {
-            sb.append("err ").append(e.javaClass.simpleName)
-        }
-        android.widget.Toast.makeText(ctx, sb.toString(), android.widget.Toast.LENGTH_LONG).show()
-        val u = md?.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI) ?: md?.description?.iconUri?.toString()
-        if (u != null) Thread {
-            val r = try {
-                val bmp = ctx.contentResolver.openInputStream(android.net.Uri.parse(u))
-                    ?.use { android.graphics.BitmapFactory.decodeStream(it) }
-                if (bmp != null) "URI OK " + bmp.width else "URI decode null"
-            } catch (e: Exception) {
-                "URI gagal: " + e.javaClass.simpleName + " " + (e.message ?: "").take(80)
-            }
-            ui.post { android.widget.Toast.makeText(ctx, r, android.widget.Toast.LENGTH_LONG).show() }
-        }.start()
     }
 
     private fun findArt(md: MediaMetadata?, c: MediaController?): Bitmap? {
