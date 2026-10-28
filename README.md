@@ -4,6 +4,8 @@ A Dynamic Island–style notch for Android tablets. It sits at the top edge of t
 
 > Built and tested on a **Huawei MatePad 11.5 (HarmonyOS 3.1)**. Other Android tablets (Android 8+) should work but are not yet tested. See [Known limitations](#known-limitations).
 
+**Website:** https://galoujang-sketch.github.io/supernova-notch/ · **[Download APK](https://github.com/galoujang-sketch/supernova-notch/releases/latest/download/SupernovaNotch.apk)**
+
 **English** · [Bahasa Indonesia](#bahasa-indonesia)
 
 ## Features
@@ -31,7 +33,7 @@ A Dynamic Island–style notch for Android tablets. It sits at the top edge of t
 
 - No accounts, no ads, no analytics.
 - The Accessibility service does **not** read the screen or what you type (`canRetrieveWindowContent = false`).
-- The only network request is to `lrclib.net` for lyrics, and it sends only the song title, artist and duration.
+- Network requests are only for lyrics (`lrclib.net`, sending just the song title, artist and duration) and, when your player provides a web link, the cover image.
 - Water count and timer settings are stored on the device only.
 
 ## FAQ
@@ -92,7 +94,7 @@ Notch ala Dynamic Island untuk tablet Android. Menempel di tepi atas layar, dan 
 2. Izinkan pemasangan dari sumber tidak dikenal, lalu buka APK.
 3. Buka aplikasi dan beri izin: tampil di atas aplikasi lain, akses notifikasi, Aksesibilitas (disarankan; di Android 13+ buka *Info aplikasi → ⋮ → Izinkan setelan terbatas* dulu), dan matikan hemat baterai.
 
-**Privasi**: tanpa akun, iklan, atau pelacakan. Layanan Aksesibilitas tidak membaca layar maupun ketikan. Satu-satunya permintaan jaringan ke `lrclib.net` untuk lirik, hanya mengirim judul, artis, dan durasi lagu. Data air minum dan timer disimpan di tablet saja.
+**Privasi**: tanpa akun, iklan, atau pelacakan. Layanan Aksesibilitas tidak membaca layar maupun ketikan. Permintaan jaringan hanya untuk lirik (`lrclib.net`, hanya mengirim judul, artis, dan durasi lagu) dan, bila pemutar memberi tautan web, gambar cover. Data air minum dan timer disimpan di tablet saja.
 
 **FAQ singkat**
 - *Kenapa ada strip hitam?* Aplikasi tidak bisa menyembunyikan status bar, hanya menutupnya. Strip muncul saat musik main.

@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Supernova Notch — a Dynamic Island for Android tablets</title>
+<meta name="description" content="A notch that lives at the top of your Android tablet: music with synced lyrics, a clean status bar, timers, calendar and charger pop-ups. Free and open source.">
+<meta property="og:title" content="Supernova Notch">
+<meta property="og:description" content="A Dynamic Island-style notch for Android tablets. Free and open source.">
+<meta property="og:image" content="https://galoujang-sketch.github.io/supernova-notch/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#06070f;--bg2:#0d1020;--fg:#eef0ff;--dim:#9aa0c4;--line:#222744;--card:#101428;--accent:#8ab4ff;--warm:#ffb072;--r:18px;
+  --disp:"Bricolage Grotesque","Inter",system-ui,sans-serif;--body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 var(--body);-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:max(20px,env(safe-area-inset-left))}
+header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;gap:20px;height:60px}
+.brand{display:flex;align-items:center;gap:10px;font:800 19px var(--disp);color:var(--fg);text-decoration:none;letter-spacing:-.01em}
+.brand img{width:30px;height:30px;border-radius:8px}
+.nav nav{margin-left:auto;display:flex;gap:22px;align-items:center}
+.nav nav a{color:var(--dim);text-decoration:none;font-size:14.5px;font-weight:500}
+.nav nav a:hover{color:var(--fg)}
+.lang{font:600 13px var(--body);color:var(--fg);background:transparent;border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer}
+.lang:hover{border-color:var(--accent)}
+.btn{display:inline-flex;align-items:center;gap:10px;font:600 16px var(--body);text-decoration:none;border-radius:14px;padding:14px 22px;border:1px solid transparent}
+.btn.main{background:linear-gradient(135deg,#9bbcff,#c9a6ff);color:#0a0c1c}
+.btn.main:hover{filter:brightness(1.06)}
+.btn.ghost{color:var(--fg);border-color:var(--line);background:var(--card)}
+.btn.ghost:hover{border-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+.hero{padding:64px 0 28px;text-align:center;position:relative}
+.hero h1{font:800 clamp(40px,7.4vw,84px)/1.02 var(--disp);letter-spacing:-.03em;margin:0 auto 18px;max-width:14ch;text-wrap:balance}
+.hero h1 em{font-style:normal;background:linear-gradient(100deg,#9bbcff,#ffb072);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p.lead{font-size:clamp(17px,2.2vw,21px);color:var(--dim);max-width:46ch;margin:0 auto 28px;text-wrap:balance}
+.cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.meta{margin-top:14px;font-size:13.5px;color:var(--dim)}
+.stage{position:relative;margin:44px auto 0;overflow:hidden;border-radius:26px;border:1px solid var(--line);height:clamp(250px,34vw,380px);background:radial-gradient(120% 90% at 50% 0%,#151a3a,#06070f 70%)}
+.device{container-type:inline-size;position:absolute;top:26px;left:50%;transform:translateX(-50%);width:max(100%,740px);max-width:1180px}
+.screen{position:relative;height:60cqw;border-radius:2.2cqw 2.2cqw 0 0;border:1.2cqw solid #000;border-bottom:0;outline:1px solid #2a2e4c;overflow:hidden;background:linear-gradient(135deg,#c6d4ff,#e4d8f6 55%,#f6d9e2)}
+.screen::before{content:"";position:absolute;inset:0;background:radial-gradient(30cqw 20cqw at 25% 45%,rgba(160,185,255,.6),transparent),radial-gradient(28cqw 20cqw at 78% 30%,rgba(255,190,215,.6),transparent)}
+.sb{position:absolute;left:0;right:0;top:0;height:2.05cqw;display:flex;justify-content:space-between;align-items:center;padding:0 2cqw;font:600 1.1cqw var(--body);color:#1b1e3a;transition:opacity .5s}
+.strip{position:absolute;left:0;right:0;top:0;height:2.05cqw;background:#000;opacity:0;transition:opacity .6s;overflow:hidden}
+.strip span{position:absolute;top:0;line-height:2.05cqw;font:600 1.25cqw/2.05cqw var(--body);color:#c8d6ff;white-space:nowrap;left:100%}
+.on-music .sb{opacity:0}.on-music .strip{opacity:1}
+.on-music .strip span{animation:lyr 11s linear infinite}
+@keyframes lyr{to{transform:translateX(-230cqw)}}
+.icons{position:absolute;left:0;right:0;top:12cqw;display:grid;grid-template-columns:repeat(7,1fr);gap:3cqw 0;padding:0 8cqw}
+.icons i{aspect-ratio:1;width:5.2cqw;border-radius:1.5cqw;justify-self:center;opacity:.9}
+.notch{position:absolute;left:50%;top:0;transform:translateX(-50%);background:#000;color:#fff;width:28.5cqw;height:2.4cqw;border-radius:0 0 1.2cqw 1.2cqw;overflow:hidden;transition:width .7s cubic-bezier(.3,1.25,.4,1),height .7s cubic-bezier(.3,1.25,.4,1),border-radius .7s;z-index:3;cursor:pointer}
+.notch>*{position:absolute;opacity:0;transition:opacity .35s;white-space:nowrap}
+.notch canvas{inset:0;width:100%;height:100%}
+.n-date{left:0;right:0;text-align:center;font:600 1.15cqw/2.4cqw var(--body)}
+.n-info{left:1.4cqw;right:1.4cqw;top:0;height:2.4cqw;display:flex;align-items:center;justify-content:space-between;font:600 1.05cqw var(--body)}
+.n-panel{left:0;top:0;width:46.2cqw;height:14.4cqw}
+.n-hud{left:0;right:0;top:0;height:100%;display:flex;align-items:center;gap:1.2cqw;padding:0 2cqw;font:600 1.4cqw var(--body)}
+.notch[data-s=pill]{--a:0}
+.notch[data-s=pill] .n-date,.notch[data-s=pill] canvas{opacity:1}
+.notch[data-s=info] .n-info{opacity:1}
+.notch[data-s=panel]{width:46.2cqw;height:14.4cqw;border-radius:0 0 3cqw 3cqw}
+.notch[data-s=panel] .n-panel{opacity:1;transition-delay:.25s}
+.notch[data-s=hud]{width:22cqw;height:5cqw;border-radius:0 0 1.7cqw 1.7cqw}
+.notch[data-s=hud] .n-hud{opacity:1;transition-delay:.2s}
+.p-art{position:absolute;left:1.6cqw;top:1cqw;width:5.8cqw;height:5.8cqw;border-radius:1cqw;background:linear-gradient(135deg,#25176b,#7a3fd0 60%,#ff8a4c)}
+.p-art::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 52%,#fff 0,#ffd2a8 14%,transparent 40%)}
+.p-t{position:absolute;left:8.6cqw;top:1.2cqw;font:700 1.35cqw var(--body)}
+.p-a{position:absolute;left:8.6cqw;top:3.1cqw;font:500 1cqw var(--body);color:#8f94a8}
+.p-l{position:absolute;left:8.6cqw;top:4.6cqw;font:700 .95cqw var(--body);color:#6ea8ff}
+.p-bar{position:absolute;left:5.4cqw;width:18.6cqw;top:7.8cqw;height:.3cqw;border-radius:1cqw;background:rgba(255,255,255,.2)}
+.p-bar b{display:block;height:100%;width:22%;background:#8ab4ff;border-radius:1cqw}
+.p-c{position:absolute;left:12cqw;top:9.2cqw;display:flex;gap:4.6cqw;align-items:center}
+.p-c svg{width:1.4cqw;height:1.4cqw;fill:#fff}
+.p-cal{position:absolute;left:27cqw;top:1.2cqw;right:1.5cqw}
+.p-cal h4{margin:0 0 1.4cqw;font:700 1.15cqw var(--body)}
+.p-cal div{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font:600 1.05cqw/1 var(--body);gap:.8cqw 0}
+.p-cal div span{color:#9a9eb4;font-weight:500;font-size:.75cqw}
+.p-cal .t{background:#3b82f6;border-radius:50%;width:2cqw;height:2cqw;margin:0 auto;display:flex;align-items:center;justify-content:center}
+.p-w{position:absolute;left:27cqw;right:1.5cqw;top:8cqw;height:4.2cqw;border-radius:1.3cqw;background:#1c1c1f;font:500 .8cqw var(--body);color:#9a9eb4;padding:.7cqw 1cqw}
+.p-w b{display:block;color:#fff;font-size:1.05cqw;margin-top:.2cqw}
+.p-w i{display:block;height:.3cqw;border-radius:1cqw;background:#2b2b30;margin-top:.6cqw}
+.n-hud svg{width:2.6cqw;height:2.6cqw}
+.n-hud small{display:block;font-weight:500;color:#9aa0b8;font-size:1cqw}
+.dots{position:absolute;left:50%;transform:translateX(-50%);bottom:1.2rem;display:flex;gap:8px}
+.dots button{width:9px;height:9px;border-radius:50%;border:0;background:#3a4070;padding:0;cursor:pointer}
+.dots button[aria-current=true]{background:var(--accent)}
+.hint{margin-top:10px;font-size:13px;color:var(--dim);text-align:center}
+section{padding:76px 0 8px}
+h2{font:800 clamp(28px,4.2vw,44px)/1.1 var(--disp);letter-spacing:-.02em;margin:0 0 12px;text-wrap:balance}
+.sub{color:var(--dim);max-width:56ch;margin:0 0 34px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:22px}
+.card h3{margin:0 0 6px;font:700 18px var(--disp)}
+.card p{margin:0;color:var(--dim);font-size:15px}
+.card .ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;margin-bottom:14px;background:linear-gradient(135deg,#1c2350,#2b2150);border:1px solid var(--line);font-size:18px}
+.steps{counter-reset:s;display:grid;gap:14px;max-width:720px}
+.steps li{list-style:none;counter-increment:s;display:grid;grid-template-columns:44px 1fr;gap:16px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px}
+.steps li::before{content:counter(s);width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font:800 18px var(--disp);background:linear-gradient(135deg,#9bbcff,#c9a6ff);color:#0a0c1c}
+.steps strong{display:block;margin-bottom:2px}
+.steps span{color:var(--dim);font-size:15px}
+ul.steps{padding:0;margin:0}
+.nums{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:28px}
+.num{flex:1 1 200px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px}
+.num b{display:block;font:800 40px/1 var(--disp);background:linear-gradient(100deg,#9bbcff,#ffb072);-webkit-background-clip:text;background-clip:text;color:transparent}
+.num span{display:block;margin-top:8px;color:var(--dim);font-size:14px}
+details{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:10px}
+summary{cursor:pointer;padding:16px 20px;font-weight:600;list-style:none;display:flex;justify-content:space-between;gap:14px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";color:var(--accent);font-size:22px;line-height:1}
+details[open] summary::after{content:"–"}
+details p{margin:0;padding:0 20px 18px;color:var(--dim)}
+.demo{display:none;margin-top:36px}
+.demo.show{display:block}
+.demo video{width:100%;max-height:640px;border-radius:var(--r);border:1px solid var(--line);background:#000}
+footer{margin-top:90px;border-top:1px solid var(--line);padding:30px 0 50px;color:var(--dim);font-size:14px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between}
+@media (max-width:640px){.nav nav a.hide-s{display:none}.hero{padding-top:44px}.nav nav{gap:14px}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.on-music .strip span{animation:none;left:8%}.notch,.notch>*{transition:none}}
+</style>
+</head>
+<body>
+<header><div class="wrap nav">
+  <a class="brand" href="#top"><img src="icon.svg" alt="" width="30" height="30">Supernova Notch</a>
+  <nav>
+    <a class="hide-s" href="#features" data-id="Fitur">Features</a>
+    <a class="hide-s" href="#install" data-id="Pasang">Install</a>
+    <a class="hide-s" href="#faq">FAQ</a>
+    <a href="https://github.com/galoujang-sketch/supernova-notch">GitHub</a>
+    <button class="lang" id="lang" type="button" aria-label="Language">ID</button>
+  </nav>
+</div></header>
+
+<main id="top">
+<div class="wrap">
+<div class="hero">
+  <h1 data-id="Dynamic Island untuk <em>tablet Android</em>" data-html>A Dynamic Island for <em>Android tablets</em></h1>
+  <p class="lead" data-id="Notch di tengah layar atas: musik dengan lirik tersinkron, bar status yang bersih, timer, kalender, dan pop-up charger. Gratis dan open source.">A notch at the top of your screen: music with synced lyrics, a clean status bar, timers, a calendar and charger pop-ups. Free and open source.</p>
+  <div class="cta">
+    <a class="btn main" href="https://github.com/galoujang-sketch/supernova-notch/releases/latest/download/SupernovaNotch.apk"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"/></svg><span data-id="Unduh APK">Download APK</span></a>
+    <a class="btn ghost" href="https://github.com/galoujang-sketch/supernova-notch" data-id="Lihat kode di GitHub">View source on GitHub</a>
+  </div>
+  <p class="meta" data-id="Android 8.0 atau lebih baru · diuji di Huawei MatePad 11.5" >Android 8.0 or newer · tested on a Huawei MatePad 11.5</p>
+
+  <div class="stage" id="stage" role="img" aria-label="Interactive preview of the notch: date pill, music info, expanded panel and a charger pop-up">
+    <div class="device" id="dev">
+      <div class="screen" id="scr">
+        <div class="sb"><span>13.12</span><span>100%</span></div>
+        <div class="strip"><span id="ly">Lyrics scroll behind the notch, word by word</span></div>
+        <div class="icons" aria-hidden="true"></div>
+        <div class="notch" id="notch" data-s="pill">
+          <canvas id="cv" width="570" height="48"></canvas>
+          <div class="n-date" id="nd">Wed, Oct 28</div>
+          <div class="n-info"><span>13.12 &nbsp;♪ Night Above Clouds</span><span>52%</span></div>
+          <div class="n-panel">
+            <div class="p-art"></div><div class="p-t">Night Above Clouds</div><div class="p-a">Nova Band</div><div class="p-l">Word by word, right on time</div>
+            <div class="p-bar"><b></b></div>
+            <div class="p-c"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg><svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></div>
+            <div class="p-cal"><h4 id="mo">October</h4><div id="wk"></div></div>
+            <div class="p-w"><span id="wl">Water today</span><b>0 / 1500 ml</b><i></i></div>
+          </div>
+          <div class="n-hud"><svg viewBox="0 0 24 24"><path fill="#ffd23f" d="M13 2L5 14h6l-1 8 8-12h-6z"/></svg><div><span id="hl">Charging</span><small>52%</small></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="dots" id="dots"></div>
+  </div>
+  <p class="hint" data-id="Ketuk notch untuk berganti tampilan" >Tap the notch to switch views</p>
+
+  <div class="demo" id="demo"><video id="vid" controls playsinline preload="metadata" poster="og.png"></video></div>
+</div>
+</div>
+
+<div class="wrap"><section id="numbers" style="padding-top:40px">
+  <div class="nums">
+    <div class="num"><b>44 MB</b><span data-id="RAM yang dipakai (diukur di MatePad 11.5)">RAM in use (measured on a MatePad 11.5)</span></div>
+    <div class="num"><b>2%</b><span data-id="porsi baterai harian setelah ±6 jam layar menyala">share of daily battery use after ~6 h screen-on</span></div>
+    <div class="num"><b>0</b><span data-id="akun, iklan, atau pelacak">accounts, ads or trackers</span></div>
+  </div>
+</section></div>
+
+<div class="wrap"><section id="features">
+  <h2 data-id="Semua info penting, di satu tempat">Everything useful, in one place</h2>
+  <p class="sub" data-id="Notch kecil di atas layar yang mengembang saat dibutuhkan, lalu menghilang saat tidak.">A small notch at the top of the screen that grows when you need it and gets out of the way when you don't.</p>
+  <div class="grid">
+    <div class="card"><div class="ic">♪</div><h3 data-id="Musik dengan lirik tersinkron">Music with synced lyrics</h3><p data-id="Cover, judul, dan kontrol. Lirik berjalan di strip atas, lewat di belakang notch seperti karaoke.">Cover art, title and controls. Lyrics run along the top strip and pass behind the notch like karaoke.</p></div>
+    <div class="card"><div class="ic">▭</div><h3 data-id="Bar atas yang bersih">Clean top bar</h3><p data-id="Saat musik main, jam, notifikasi, Wi-Fi, dan baterai pindah ke dalam notch. Saat musik berhenti, bar asli kembali.">While music plays, the clock, notifications, Wi-Fi and battery move into the notch. When it stops, the normal bar returns.</p></div>
+    <div class="card"><div class="ic">⏱</div><h3 data-id="Timer fokus">Focus timer</h3><p data-id="Durasi fokus dan istirahat bisa diatur sesuai kebiasaan Anda.">Focus and break durations you can set to match your routine.</p></div>
+    <div class="card"><div class="ic">▦</div><h3 data-id="Kalender dan air minum">Calendar and water</h3><p data-id="Kalender mingguan dan pengingat air minum langsung di panel.">A week calendar and a water tracker right in the panel.</p></div>
+    <div class="card"><div class="ic">⚡</div><h3 data-id="HUD sekilas">Quick HUD pop-ups</h3><p data-id="Charger dicolok atau dilepas, headphone tersambung, volume, dan Wi-Fi terputus.">Charger plugged or unplugged, headphones connected, volume and lost Wi-Fi.</p></div>
+    <div class="card"><div class="ic">✦</div><h3 data-id="Maskot Nova">Nova, the mascot</h3><p data-id="Saat idle, notch menampilkan antariksa mini dengan supernova yang muncul sesekali, lalu membeku agar hemat baterai.">When idle, the notch shows a tiny night sky with an occasional supernova, then freezes to save battery.</p></div>
+  </div>
+  <p class="sub" style="margin:22px 0 0" data-id="Juga: sembunyi otomatis di aplikasi layar penuh, Bahasa Inggris dan Indonesia." >Also: auto-hides in fullscreen apps, English and Indonesian interface.</p>
+</section></div>
+
+<div class="wrap"><section id="install">
+  <h2 data-id="Pasang dalam 3 langkah">Install in 3 steps</h2>
+  <p class="sub" data-id="Tidak perlu PC dan tidak perlu akun.">No PC and no account needed.</p>
+  <ul class="steps">
+    <li><div><strong data-id="Unduh dan pasang APK">Download and install the APK</strong><span data-id="Izinkan pemasangan dari sumber tidak dikenal untuk peramban Anda, lalu buka berkas APK.">Allow installs from unknown sources for your browser, then open the APK file.</span></div></li>
+    <li><div><strong data-id="Beri izin">Grant the permissions</strong><span data-id="Tampil di atas aplikasi lain, akses notifikasi, dan Aksesibilitas (disarankan). Di Android 13+, buka Info aplikasi → ⋮ → Izinkan setelan terbatas dulu. Matikan juga hemat baterai untuk aplikasi ini.">Display over other apps, notification access, and Accessibility (recommended). On Android 13+, open App info → ⋮ → Allow restricted settings first. Also turn off battery optimization for the app.</span></div></li>
+    <li><div><strong data-id="Putar musik">Play some music</strong><span data-id="Notch muncul di tengah atas layar. Ketuk untuk membuka panel.">The notch appears at the top center. Tap it to open the panel.</span></div></li>
+  </ul>
+</section></div>
+
+<div class="wrap"><section id="faq">
+  <h2>FAQ</h2>
+  <p class="sub" data-id="Jawaban jujur, termasuk batasannya.">Honest answers, including the limits.</p>
+  <details><summary data-id="Apakah bisa di tablet Android selain Huawei?">Does it work on Android tablets other than Huawei?</summary><p data-id="Kemungkinan besar bisa di Android 8.0 ke atas, tetapi baru diuji di Huawei MatePad 11.5 (HarmonyOS 3.1). Di perangkat lain deteksi layar penuh atau posisi notch bisa berbeda. Laporkan lewat GitHub Issues.">Very likely on Android 8.0 and newer, but it has only been tested on a Huawei MatePad 11.5 (HarmonyOS 3.1). On other devices fullscreen detection or notch position may behave differently. Please report it on GitHub Issues.</p></details>
+  <details><summary data-id="Berapa RAM dan baterai yang dipakai?">How much RAM and battery does it use?</summary><p data-id="Sekitar 44 MB RAM dan 2% dari total konsumsi baterai harian (sekitar 6 jam layar menyala dengan musik), diukur di MatePad 11.5. Itu hasil satu perangkat dan satu hari, jadi angka Anda bisa berbeda.">About 44 MB of RAM and 2% of the day's total battery consumption (around 6 hours of screen-on time with music), measured on a MatePad 11.5. That is one device and one day, so your numbers may differ.</p></details>
+  <details><summary data-id="Apakah aman? Data apa yang dikirim?">Is it safe? What data is sent?</summary><p data-id="Tanpa akun, iklan, atau pelacakan. Layanan Aksesibilitas tidak membaca layar maupun ketikan. Permintaan jaringan hanya untuk lirik (lrclib.net, berisi judul, artis, dan durasi lagu) dan, bila pemutar memberi tautan web, gambar cover. Kode terbuka sehingga bisa diperiksa.">No accounts, ads or tracking. The Accessibility service does not read your screen or keystrokes. Network requests are only for lyrics (lrclib.net, sending song title, artist and duration) and, if your player provides a web link, the cover image. The code is open so you can check it.</p></details>
+  <details><summary data-id="Kenapa ada strip hitam di atas?">Why is there a black strip at the top?</summary><p data-id="Aplikasi tidak bisa menyembunyikan bar status, hanya menutupnya. Strip hanya muncul saat musik main, dan hilang dengan fade saat musik berhenti.">Android apps can't hide the status bar, only cover it. The strip only appears while music plays and fades out when it stops.</p></details>
+  <details><summary data-id="Notch hilang sendiri, kenapa?">The notch disappears after a while</summary><p data-id="Matikan optimasi baterai untuk aplikasi ini. Sebagian merek menutup aplikasi latar belakang dengan agresif.">Turn off battery optimization for the app. Some Android skins close background apps aggressively.</p></details>
+  <details><summary data-id="Cover lagu tidak muncul?">The song cover doesn't show</summary><p data-id="Pastikan akses notifikasi aktif untuk Supernova Notch dan tablet punya internet. Matikan lalu nyalakan lagi izin itu bila perlu, lalu ganti lagu.">Make sure notification access is on for Supernova Notch and the tablet is online. Toggle that permission off and on if needed, then change the song.</p></details>
+  <details><summary data-id="Apakah gratis?">Is it free?</summary><p data-id="Ya. Lisensi MIT. Silakan fork dan ubah sesuka Anda.">Yes. MIT license. Feel free to fork and change it.</p></details>
+</section></div>
+</main>
+
+<footer><div class="wrap">
+  <span>© <span id="yr">2026</span> Supernova Notch · MIT</span>
+  <span><a href="https://github.com/galoujang-sketch/supernova-notch">GitHub</a> · <a href="https://github.com/galoujang-sketch/supernova-notch/releases">Releases</a> · <a href="https://github.com/galoujang-sketch/supernova-notch/issues">Issues</a></span>
+</div></footer>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s)};
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* i18n: English is the default text in the HTML; Indonesian lives in data-id */
+  var els=[].slice.call(document.querySelectorAll('[data-id]'));
+  els.forEach(function(e){e.dataset.en=e.hasAttribute('data-html')?e.innerHTML:e.textContent});
+  var T={en:{nd:'Wed, Oct 28',ly:'Lyrics scroll behind the notch, word by word',mo:'October',wl:'Water today',hl:'Charging',days:['M','T','W','T','F','S','S'],tt:'Night Above Clouds',pl:'Word by word, right on time',title:'Supernova Notch — a Dynamic Island for Android tablets'},
+         id:{nd:'Rab, 28 Okt',ly:'Lirik berjalan di belakang notch, kata demi kata',mo:'Oktober',wl:'Air minum hari ini',hl:'Mengisi daya',days:['S','S','R','K','J','S','M'],tt:'Malam di Atas Awan',pl:'Kata demi kata, tepat waktu',title:'Supernova Notch — Dynamic Island untuk tablet Android'}};
+  function setLang(l){
+    document.documentElement.lang=l;
+    els.forEach(function(e){var v=l==='id'?e.getAttribute('data-id'):e.dataset.en;if(e.hasAttribute('data-html'))e.innerHTML=v;else e.textContent=v});
+    var t=T[l];$('#nd').textContent=t.nd;$('#ly').textContent=t.ly;$('#mo').textContent=t.mo;$('#wl').textContent=t.wl;$('#hl').textContent=t.hl;
+    document.title=t.title;
+    document.querySelector('.n-info span').innerHTML='13.12 &nbsp;♪ '+t.tt;
+    document.querySelector('.p-t').textContent=t.tt;document.querySelector('.p-l').textContent=t.pl;
+    buildWeek(t.days);
+    $('#lang').textContent=l==='id'?'EN':'ID';
+    try{localStorage.setItem('lang',l)}catch(e){}
+    cur=l;
+  }
+  var cur='en';
+  function buildWeek(d){var h='';d.forEach(function(x){h+='<span>'+x+'</span>'});[26,27,28,29,30,31,1].forEach(function(n,i){h+=i===2?'<b class="t">'+n+'</b>':'<b style="font-weight:600">'+n+'</b>'});$('#wk').innerHTML=h}
+  var saved=null;try{saved=localStorage.getItem('lang')}catch(e){}
+  var want=saved||((navigator.language||'en').toLowerCase().indexOf('id')===0?'id':'en');
+  /* decorative home-screen icons */
+  var cs=['#ff9aa8','#ffc28a','#ffe08a','#9ee0a8','#8fd3ff','#a9a8ff','#e3a6ff'],ih='';
+  for(var i=0;i<14;i++)ih+='<i style="background:linear-gradient(135deg,'+cs[i%7]+','+cs[(i+3)%7]+')"></i>';
+  $('.icons').innerHTML=ih;
+  /* notch state machine */
+  var states=['pill','info','panel','hud'],dur={pill:2800,info:3600,panel:4400,hud:2600},idx=0,timer;
+  var dots=$('#dots'),n=$('#notch'),scr=$('#scr');
+  states.forEach(function(s,i){var b=document.createElement('button');b.type='button';b.setAttribute('aria-label',s);b.onclick=function(){go(i,true)};dots.appendChild(b)});
+  function go(i,manual){
+    idx=i;var s=states[i];n.dataset.s=s;
+    scr.classList.toggle('on-music',s!=='pill');
+    [].forEach.call(dots.children,function(b,j){b.setAttribute('aria-current',j===i?'true':'false')});
+    clearTimeout(timer);
+    if(!reduce)timer=setTimeout(function(){go((idx+1)%states.length)},manual?dur[s]+2500:dur[s]);
+  }
+  n.addEventListener('click',function(){go((idx+1)%states.length,true)});
+  /* tiny supernova inside the idle pill */
+  var cv=$('#cv'),g=cv.getContext('2d'),t0=performance.now(),stars=[];
+  for(var k=0;k<46;k++)stars.push([Math.random()*570,Math.random()*48,Math.random()*1.1+.3,Math.random()*6]);
+  function glow(x,y,r,c,a){var q=g.createRadialGradient(x,y,0,x,y,r);q.addColorStop(0,'rgba('+c+','+a+')');q.addColorStop(1,'rgba('+c+',0)');g.fillStyle=q;g.beginPath();g.arc(x,y,r,0,6.2832);g.fill()}
+  function frame(now){
+    var t=((now-t0)/1000)%9;g.clearRect(0,0,570,48);g.globalCompositeOperation='lighter';
+    glow(180,30,130,'90,70,200',.22);glow(430,14,120,'40,100,220',.2);glow(300,40,90,'210,70,150',.16);
+    stars.forEach(function(s){g.globalAlpha=.4+.6*Math.abs(Math.sin(now/700+s[3]));g.fillStyle='#fff';g.fillRect(s[0],s[1],s[2],s[2])});g.globalAlpha=1;
+    var cx=285,cy=24;
+    if(t<4){var u=t/4,r=16*Math.pow(1-u,1.3)+1.5,th=6.28*(1.2*u+2.6*u*u);
+      glow(cx+Math.cos(th)*r,cy+Math.sin(th)*r*.6,6,'160,196,255',.9);glow(cx-Math.cos(th)*r,cy-Math.sin(th)*r*.6,6,'255,176,110',.9)}
+    else{var b=t-4,a=Math.max(0,1-b/2.2);if(b<.5)glow(cx,cy,10+b*120,'255,255,255',1-b*2);
+      g.lineWidth=2;g.strokeStyle='rgba(255,170,100,'+a*.6+')';g.beginPath();g.arc(cx,cy,3+b*60,0,6.2832);g.stroke();
+      glow(cx,cy,5,'255,235,215',Math.min(1,b*2)*.9)}
+    g.globalCompositeOperation='source-over';
+    if(!reduce||frame.once!==1){frame.once=1;requestAnimationFrame(frame)}
+  }
+  requestAnimationFrame(frame);
+  $('#lang').onclick=function(){setLang(cur==='id'?'en':'id')};
+  setLang(want);go(0);
+  $('#yr').textContent=new Date().getFullYear();
+  /* optional demo video: shows up only when docs/demo.mp4 exists */
+  fetch('demo.mp4',{method:'HEAD'}).then(function(r){if(r.ok){$('#vid').src='demo.mp4';$('#demo').classList.add('show')}}).catch(function(){});
+})();
+</script>
+</body>
+</html>
