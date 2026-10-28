@@ -285,7 +285,7 @@ footer a{color:#fff}
 </section>
 
 <footer>
-  <div class="wrap"><span data-id="Dibuat oleh satu orang, lisensi MIT.">Made by one person, MIT license.</span> <a href="https://github.com/galoujang-sketch/supernova-notch">GitHub</a> · <a href="https://github.com/galoujang-sketch/supernova-notch/issues" data-id="Laporkan masalah">Report a problem</a></div>
+  <div class="wrap"><p id="cred" hidden style="margin:0 0 10px"></p><span data-id="Dibuat oleh satu orang, lisensi MIT.">Made by one person, MIT license.</span> <a href="https://github.com/galoujang-sketch/supernova-notch">GitHub</a> · <a href="https://github.com/galoujang-sketch/supernova-notch/issues" data-id="Laporkan masalah">Report a problem</a></div>
 </footer>
 
 <script>
@@ -346,7 +346,7 @@ footer a{color:#fff}
   setDate();btn.addEventListener('click',function(){setTimeout(setDate,0)});
   /* playback engine: one 3:12 track, timed lyric lines, seek, pause */
   var DUR=192,PB={t:0,playing:true,idx:0},LINES=[[1,'Ini bukan lirik asli lagunya'],[6,'lirik berhak cipta tidak ditampilkan di sini'],[12,'di aplikasi, baris seperti ini datang dari LRCLIB'],[18,'lalu berjalan di strip, tepat waktu dengan lagunya'],[24,'tab notch menutupinya saat lewat']];
-  var lyEl=document.getElementById('ly'),lyAnims=[],lyNextAt=0;
+  var lyEl=document.getElementById('ly'),lyAnims=[],lyNextAt=0,AUD=null;
   function dpx(){var v=parseFloat(getComputedStyle(scr).getPropertyValue('--dp'));if(!v||v<.3){var w=scr.getBoundingClientRect().width;v=Math.min(Math.max(w/1300,.8),1.15)}return v}
   function lySpawn(text){
     var dp=dpx(),vw=scr.getBoundingClientRect().width,e=document.createElement('span');e.textContent=text;lyEl.appendChild(e);
@@ -361,15 +361,22 @@ footer a{color:#fff}
   function fmt(n){n=Math.max(0,Math.floor(n));return Math.floor(n/60)+':'+('0'+(n%60)).slice(-2)}
   var pgI=document.querySelector('#pg i'),teEl=document.getElementById('te'),trEl=document.getElementById('tr'),pgEl=document.getElementById('pg'),ppi=document.getElementById('ppi');
   function paint(){pgI.style.width=(PB.t/DUR*100)+'%';teEl.textContent=fmt(PB.t);trEl.textContent='-'+fmt(DUR-PB.t);pgEl.setAttribute('aria-valuenow',Math.floor(PB.t))}
-  function seek(t){PB.t=Math.max(0,Math.min(DUR-.01,t));lyClear();PB.idx=0;while(PB.idx<LINES.length&&LINES[PB.idx][0]<=PB.t)PB.idx++;paint()}
-  function setPlaying(v){PB.playing=v;ppi.innerHTML=v?'<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/>':'<path d="M7 4v16l13-8z"/>';
+  function seek(t){PB.t=Math.max(0,Math.min(DUR-.01,t));if(AUD)AUD.currentTime=PB.t;lyClear();PB.idx=0;while(PB.idx<LINES.length&&LINES[PB.idx][0]<=PB.t)PB.idx++;paint()}
+  function setPlaying(v){PB.playing=v;if(AUD){if(v&&isMusic())AUD.play().catch(function(){});else AUD.pause()}ppi.innerHTML=v?'<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/>':'<path d="M7 4v16l13-8z"/>';
     lyAnims.forEach(function(a){if(v&&isMusic())a.play();else a.pause()})}
   var last=performance.now();
   setInterval(function(){var n=performance.now(),dt=(n-last)/1000;last=n;
     var m=isMusic();
     lyAnims.forEach(function(a){if(PB.playing&&m){if(a.playState==='paused')a.play()}else a.pause()});
-    if(!m||!PB.playing)return;
-    PB.t+=dt;if(PB.t>=DUR){PB.t=0;PB.idx=0;lyClear()}
+    if(AUD){
+      if(m&&PB.playing){if(AUD.paused)AUD.play().catch(function(){setPlaying(false)})}else if(!AUD.paused)AUD.pause();
+      if(AUD.duration&&isFinite(AUD.duration)&&AUD.duration!==DUR){DUR=AUD.duration;pgEl.setAttribute('aria-valuemax',Math.floor(DUR))}
+      if(PB.t>AUD.currentTime+1){PB.idx=0;lyClear()}
+      PB.t=AUD.currentTime;if(!m||!PB.playing){paint();return}
+    }else{
+      if(!m||!PB.playing)return;
+      PB.t+=dt;if(PB.t>=DUR){PB.t=0;PB.idx=0;lyClear()}
+    }
     while(PB.idx<LINES.length&&LINES[PB.idx][0]<=PB.t){var tx=LINES[PB.idx++][1];
       var delay=Math.max(0,lyNextAt-n);setTimeout(function(t){return function(){lySpawn(t)}}(tx),delay);
       lyNextAt=n+delay+(tx.length*7.2+28)/90*1000;}
@@ -378,6 +385,16 @@ footer a{color:#fff}
   fetch('lyrics.lrc').then(function(r){return r.ok?r.text():''}).then(function(tx){
     if(!tx)return;var L=[];tx.split(/\r?\n/).forEach(function(l){var m=l.match(/^\[(\d+):(\d+(?:\.\d+)?)\](.*)$/);if(m&&m[3].trim())L.push([+m[1]*60+ +m[2],m[3].trim()])});
     if(L.length){LINES=L;seek(PB.t)}}).catch(function(){});
+  /* optional real track the owner supplies: docs/track.json {"title","artist","src","credit","creditUrl"} + the audio file */
+  fetch('track.json').then(function(r){return r.ok?r.json():null}).then(function(j){
+    if(!j||!j.src)return;
+    document.querySelector('.song b').textContent=j.title||'';document.querySelector('.song small').textContent=j.artist||'';
+    document.querySelector('.strip .t').textContent='\u266a '+(j.title||'');
+    var a=new Audio();a.preload='metadata';a.src=j.src;a.addEventListener('error',function(){AUD=null});
+    a.addEventListener('loadedmetadata',function(){AUD=a;DUR=a.duration||DUR;setPlaying(false);seek(0)});
+    a.addEventListener('ended',function(){seek(0);setPlaying(false)});
+    if(j.credit){var c=document.getElementById('cred');c.hidden=false;c.innerHTML='';var t=document.createTextNode(j.credit+' ');c.appendChild(t);if(j.creditUrl){var l=document.createElement('a');l.href=j.creditUrl;l.rel='noopener';l.textContent=j.creditUrl.replace(/^https?:\/\//,'');c.appendChild(l)}}
+  }).catch(function(){});
   paint();
   var order=['date','music','panel','volume','idle'],cur=0,stopped=false,hover=false;
   function show(k){
