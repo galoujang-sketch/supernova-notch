@@ -17,6 +17,7 @@ import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
 import android.os.BatteryManager
 import android.service.notification.StatusBarNotification
+import android.text.TextPaint
 import android.text.TextUtils
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -40,7 +41,7 @@ class StatusInfo(private val ctx: Context) {
         textSize = dp(14f)
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
-    private val zonePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val zonePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textSize = dp(12.5f)
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)

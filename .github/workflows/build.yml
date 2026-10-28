@@ -22,7 +22,16 @@ jobs:
       - name: Build debug APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          set -o pipefail
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+
+      # Bila build gagal, tampilkan baris error kompilasi sebagai anotasi supaya mudah dibaca.
+      - name: Report compile errors
+        if: failure()
+        run: |
+          grep -E "^e: |error:|What went wrong" -A2 build.log | head -40 | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
 
       - name: Rename APK
         run: cp app/build/outputs/apk/debug/app-debug.apk NotchMatePad.apk
