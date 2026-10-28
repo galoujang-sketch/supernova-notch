@@ -45,6 +45,12 @@ jobs:
             echo "::error::${line}"
           done
 
+      - name: Show signing certificate
+        run: |
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          SHA=$("$APKSIGNER" verify --print-certs app/build/outputs/apk/release/app-release.apk | grep "SHA-256" | head -1)
+          echo "::notice::Signer ${SHA}"
+
       - name: Rename APK
         run: cp app/build/outputs/apk/release/app-release.apk SupernovaNotch.apk
 
