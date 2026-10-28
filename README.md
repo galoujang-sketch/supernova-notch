@@ -48,13 +48,13 @@ A Dynamic Island–style notch for Android tablets. It sits at the top edge of t
 
 **How much RAM does it use?** About 44 MB, measured on a Huawei MatePad 11.5 (HarmonyOS 3.1) in *Settings → Apps → App usage* over 3 hours with music, lyrics and the idle scene in normal use. For comparison, the same list showed Huawei Home at 119 MB, Facebook at 92 MB and Gboard at 72 MB. This is one device and one session, so your numbers may differ. To check on your device: *Settings → Apps → App usage* or Developer options → *Running services*.
 
-**How much battery does it use?** Not measured precisely yet. What affects power:
-- **Screen off**: nothing is drawn.
-- **Idle scene**: drawn at 20 fps for the first 5 minutes, then frozen into a still image (no further cost).
-- **Music playing**: the notch refreshes about twice a second, and scrolling lyrics are drawn at about 30 fps while the top strip is visible.
-- **Fullscreen apps**: the notch hides and stops drawing.
+**How much battery does it use?** On a Huawei MatePad 11.5 (HarmonyOS 3.1), *Settings → Battery → Battery usage* showed Supernova Notch at 2% of the day's total consumption, after about 6 hours of screen-on time that included music playback. In the same list Spotify was 16% and Chrome 29%. Note that this is a share of total usage, not 2% of the battery itself. It is one device and one day, so your numbers may differ. What affects power:
+- Screen off: nothing is drawn.
+- Idle scene: 20 frames per second for the first 5 minutes, then frozen to a still image.
+- Music playing: the notch refreshes about twice per second and the lyrics scroll at about 30 frames per second while the strip is visible.
+- Fullscreen apps: the notch is hidden and stops drawing.
 
-It should be a small share of daily usage; check *Settings → Battery → Battery usage* after a day of normal use. If it is too high for you, turn off lyrics-heavy use (pause music) or turn off clean mode in the app.
+To check on your device: *Settings → Battery → Battery usage* after a day of normal use. If it is too high for you, turn off clean mode in the app.
 
 **How do I update?** Install the newer APK over the old one.
 
@@ -99,7 +99,7 @@ Notch ala Dynamic Island untuk tablet Android. Menempel di tepi atas layar, dan 
 - *Notch hilang sendiri?* Matikan hemat baterai untuk aplikasi ini.
 - *Lirik tidak muncul?* Lagu tidak ada di database LRCLIB.
 - *Berapa RAM yang dipakai?* Sekitar 44 MB, diukur di Huawei MatePad 11.5 (HarmonyOS 3.1) pada *Pengaturan → Aplikasi → Penggunaan aplikasi* selama 3 jam dengan musik, lirik, dan adegan idle dipakai seperti biasa. Sebagai pembanding, di daftar yang sama Beranda Huawei 119 MB, Facebook 92 MB, Gboard 72 MB. Ini hasil satu perangkat dan satu sesi, jadi angka di perangkat lain bisa berbeda. Cek di *Pengaturan → Aplikasi → Penggunaan aplikasi* atau Opsi pengembang → *Layanan yang berjalan*.
-- *Berapa persen baterai yang dipakai?* Belum diukur dengan tepat. Layar mati: tidak ada yang digambar. Adegan idle: 20 bingkai per detik selama 5 menit pertama, lalu dibekukan jadi gambar diam. Musik main: notch menyegarkan diri sekitar dua kali per detik dan lirik berjalan sekitar 30 bingkai per detik selama strip tampil. Aplikasi layar penuh: notch tersembunyi dan berhenti menggambar. Cek di *Pengaturan → Baterai → Penggunaan baterai* setelah sehari pemakaian normal.
+- *Berapa persen baterai yang dipakai?* Di Huawei MatePad 11.5 (HarmonyOS 3.1), *Pengaturan → Baterai → Penggunaan baterai* menunjukkan Supernova Notch 2% dari total konsumsi hari itu, setelah sekitar 6 jam layar menyala termasuk memutar musik. Di daftar yang sama Spotify 16% dan Chrome 29%. Perlu dicatat, angka itu porsi dari total pemakaian, bukan 2% dari baterai. Ini hasil satu perangkat dan satu hari. Layar mati: tidak ada yang digambar. Adegan idle: 20 bingkai per detik selama 5 menit pertama, lalu dibekukan jadi gambar diam. Musik main: notch menyegarkan diri sekitar dua kali per detik dan lirik berjalan sekitar 30 bingkai per detik selama strip tampil. Aplikasi layar penuh: notch tersembunyi dan berhenti menggambar.
 - *Cara memperbarui?* Pasang APK terbaru di atas yang lama.
 
 Lisensi: [MIT](LICENSE).
