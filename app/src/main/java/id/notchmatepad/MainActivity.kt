@@ -26,6 +26,7 @@ class MainActivity : Activity() {
     private lateinit var overlayStatus: TextView
     private lateinit var listenerStatus: TextView
     private lateinit var batteryStatus: TextView
+    private lateinit var accessStatus: TextView
     private lateinit var toggle: Button
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
@@ -67,6 +68,21 @@ class MainActivity : Activity() {
             button("Matikan hemat baterai untuk aplikasi ini") { requestBatteryExemption() }
         )
 
+        accessStatus = text("", 15f, Color.parseColor("#111111"), true)
+        column.addView(accessStatus, spaced())
+        column.addView(
+            text(
+                "Disarankan: dengan mode ini pil menempel di tepi atas layar dan tetap bisa disentuh " +
+                    "(tanpa mode ini, pil berada di bawah status bar). Layanan ini tidak membaca isi layar.",
+                13f, Color.parseColor("#555555"), false
+            )
+        )
+        column.addView(
+            button("Aktifkan mode di atas status bar (Aksesibilitas)") {
+                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            }
+        )
+
         toggle = button("") { toggleService() }
         column.addView(
             toggle,
@@ -100,8 +116,16 @@ class MainActivity : Activity() {
         listenerStatus.text = (if (listener) "✔ " else "✘ ") + "Akses notifikasi (musik)"
         batteryStatus.text = (if (battery) "✔ " else "✘ ") + "Bebas hemat baterai"
 
-        toggle.text = if (NotchService.running) "Matikan notch" else "Nyalakan notch"
-        toggle.isEnabled = overlay || NotchService.running
+        val access = Store.isAccessibilityEnabled(this)
+        accessStatus.text = (if (access) "✔ " else "✘ ") + "Mode di atas status bar (Aksesibilitas)"
+
+        if (access) {
+            toggle.text = "Notch dijalankan oleh Aksesibilitas"
+            toggle.isEnabled = false
+        } else {
+            toggle.text = if (NotchService.running) "Matikan notch" else "Nyalakan notch (mode biasa)"
+            toggle.isEnabled = overlay || NotchService.running
+        }
     }
 
     private fun toggleService() {

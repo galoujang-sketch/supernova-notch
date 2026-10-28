@@ -27,6 +27,11 @@ object Store {
         prefs(c).edit().putInt("water_ml", max(0, current + ml)).apply()
     }
 
+    fun isAccessibilityEnabled(c: Context): Boolean {
+        val enabled = Settings.Secure.getString(c.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        return enabled?.contains(c.packageName) == true
+    }
+
     fun hasListenerAccess(c: Context): Boolean {
         val enabled = Settings.Secure.getString(c.contentResolver, "enabled_notification_listeners")
         return enabled?.contains(c.packageName) == true

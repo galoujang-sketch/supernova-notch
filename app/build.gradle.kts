@@ -15,6 +15,16 @@ android {
         versionName = "0.1.0"
     }
 
+    // Kunci debug tetap (bukan rahasia) supaya APK versi baru bisa menimpa versi lama.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

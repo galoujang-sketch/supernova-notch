@@ -36,6 +36,12 @@ class NotchService : Service() {
             .build()
         startForeground(NOTIFICATION_ID, notification)
 
+        if (NotchAccessibilityService.active) {
+            // Notch sudah ditampilkan oleh layanan Aksesibilitas.
+            stopSelf()
+            return
+        }
+
         if (!Settings.canDrawOverlays(this)) {
             stopSelf()
             return

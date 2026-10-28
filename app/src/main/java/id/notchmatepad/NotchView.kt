@@ -46,7 +46,11 @@ import kotlin.math.min
  * Terbuka: tiga halaman (Musik, Timer fokus, Air minum). Geser kiri/kanan untuk ganti halaman,
  * geser ke atas atau ketuk di luar untuk menutup.
  */
-class NotchView(private val ctx: Context, private val wm: WindowManager) : FrameLayout(ctx) {
+class NotchView(
+    private val ctx: Context,
+    private val wm: WindowManager,
+    private val overlayType: Int = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+) : FrameLayout(ctx) {
 
     private val ui = Handler(Looper.getMainLooper())
     private val density = ctx.resources.displayMetrics.density
@@ -65,7 +69,7 @@ class NotchView(private val ctx: Context, private val wm: WindowManager) : Frame
     private val params: WindowManager.LayoutParams = WindowManager.LayoutParams(
         collapsedW,
         collapsedH,
-        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+        overlayType,
         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
             WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
