@@ -24,13 +24,14 @@ h1,h2,h3{font-family:"Archivo",Impact,sans-serif;font-stretch:125%;font-weight:9
 /* ---------- hero ---------- */
 .hero{background:var(--cobalt);color:#fff;position:relative;overflow:hidden}
 .stage{container-type:inline-size;width:min(100%,780px);margin:0 auto;height:clamp(240px,31vw,300px);position:relative}
-.notch{--w:26cqw;--h:4.4cqw;--r:2.2cqw;--f:2cqw;position:absolute;top:0;left:50%;transform:translateX(-50%);width:var(--w);height:var(--h);border-radius:0 0 var(--r) var(--r);background:#000;overflow:hidden;font-size:var(--f);color:#fff;box-shadow:0 30px 60px -20px rgba(0,0,40,.55);transition:width .65s cubic-bezier(.2,.9,.25,1),height .65s cubic-bezier(.2,.9,.25,1),border-radius .65s cubic-bezier(.2,.9,.25,1)}
+.notch{--w:30cqw;--h:4.2cqw;--r:2.1cqw;--f:2cqw;position:absolute;top:0;left:50%;transform:translateX(-50%);width:var(--w);height:var(--h);border-radius:0 0 var(--r) var(--r);background:#000;overflow:hidden;font-size:var(--f);color:#fff;box-shadow:0 30px 60px -20px rgba(0,0,40,.55);transition:width .65s cubic-bezier(.2,.9,.25,1),height .65s cubic-bezier(.2,.9,.25,1),border-radius .65s cubic-bezier(.2,.9,.25,1)}
 .stage[data-s=info] .notch,.stage[data-s=lyrics] .notch{--w:74cqw;--h:6.2cqw;--r:3.1cqw}
 .stage[data-s=panel] .notch{--w:100cqw;--h:36cqw;--r:7cqw}
 .stage[data-s=volume] .notch{--w:48cqw;--h:6.2cqw;--r:3.1cqw}
 .l{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .2s}
 .stage[data-s=idle] .l.idle,.stage[data-s=info] .l.info,.stage[data-s=lyrics] .l.lyr,.stage[data-s=panel] .l.pan,.stage[data-s=volume] .l.vl{opacity:1;transition-delay:.3s}
-.l.idle{display:grid;place-items:center}
+.l.idle{background:url(img/pill.png) center/cover no-repeat;animation:glow 5s ease-in-out infinite}
+@keyframes glow{50%{filter:brightness(1.35)}}
 .dot{width:.9em;height:.9em;border-radius:50%;background:radial-gradient(circle,#fff 0 30%,#8fb4ff 55%,transparent 70%);box-shadow:0 0 1.2em #8fb4ff;animation:pulse 2.4s ease-in-out infinite}
 @keyframes pulse{50%{transform:scale(1.5);opacity:.7}}
 .strip{display:flex;align-items:center;height:100%;padding:0 1.8em;gap:1em;font-weight:700;white-space:nowrap}
@@ -129,7 +130,7 @@ footer a{color:#fff}
 @media(max-width:640px){
  nav .hide-s{display:none}
  .stage{height:64vw;max-height:300px;width:100%}
- .notch{--w:34cqw;--h:7cqw;--r:3.5cqw;--f:3.3cqw}
+ .notch{--w:46cqw;--h:6.5cqw;--r:3.2cqw;--f:3.3cqw}
  .stage[data-s=info] .notch,.stage[data-s=lyrics] .notch{--w:94cqw;--h:9.5cqw;--r:4.7cqw}
  .stage[data-s=volume] .notch{--w:80cqw;--h:9.5cqw;--r:4.7cqw}
  .stage[data-s=panel] .notch{--w:94cqw;--h:56cqw;--r:7cqw}
@@ -138,14 +139,14 @@ footer a{color:#fff}
  .title{white-space:normal;font-size:clamp(2.6rem,14.5vw,4.5rem)}
  section{padding:64px 0}
 }
-@media (prefers-reduced-motion:reduce){.dot,.mq span,.vb i,.prog i,.tick div{animation:none!important}.prog i{width:35%}.vb i{width:60%}.notch{transition:none}}
+@media (prefers-reduced-motion:reduce){.l.idle,.mq span,.vb i,.prog i,.tick div{animation:none!important}.prog i{width:35%}.vb i{width:60%}.notch{transition:none}}
 </style>
 </head>
 <body>
 <div class="hero">
   <div class="stage" id="screen" data-s="info" role="img" aria-label="Animated preview of the notch changing between its states">
     <div class="notch">
-      <div class="l idle"><span class="dot"></span></div>
+      <div class="l idle"></div>
       <div class="l info"><div class="strip"><span id="clk">12:36</span><span class="t">♪ Malam di Atas Awan</span>
         <svg class="ic" viewBox="0 0 24 24"><path d="M5 12a10 10 0 0 1 14 0M8 15a6 6 0 0 1 8 0M12 19h.01"/></svg>
         <svg class="ic" viewBox="0 0 34 16"><rect x="1" y="1" width="28" height="14" rx="4"/><rect x="4" y="4" width="14" height="8" rx="2" fill="#fff" stroke="none"/><path d="M31 6v4"/></svg><span class="ic">60%</span></div></div>
@@ -189,7 +190,7 @@ footer a{color:#fff}
           <li><button type="button" data-k="lyrics" aria-pressed="false"><i>02</i><b data-id="Lirik">Lyrics</b><span data-id="Baris yang dinyanyikan berjalan di strip.">The line being sung scrolls across the strip.</span></button></li>
           <li><button type="button" data-k="panel" aria-pressed="false"><i>03</i><b data-id="Panel">Panel</b><span data-id="Kontrol musik, kalender minggu ini, pencatat air minum.">Music controls, this week's calendar, a water tracker.</span></button></li>
           <li><button type="button" data-k="volume" aria-pressed="false"><i>04</i><b>Volume</b><span data-id="HUD volume yang rapi.">A tidy volume HUD.</span></button></li>
-          <li><button type="button" data-k="idle" aria-pressed="false"><i>05</i><b data-id="Diam">Idle</b><span data-id="Mengecil jadi pil kecil saat tidak dipakai.">Shrinks to a small pill when unused.</span></button></li>
+          <li><button type="button" data-k="idle" aria-pressed="false"><i>05</i><b data-id="Diam">Idle</b><span data-id="Mengecil jadi pil kecil dengan supernova saat tidak dipakai.">Shrinks to a small pill with a supernova when unused.</span></button></li>
         </ol>
       </div>
     </main>
