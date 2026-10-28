@@ -1,6 +1,7 @@
 package id.notchmatepad
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.provider.Settings
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -25,6 +26,21 @@ object Store {
     fun addWater(c: Context, ml: Int) {
         val current = water(c)
         prefs(c).edit().putInt("water_ml", max(0, current + ml)).apply()
+    }
+
+    /** Strip hitam yang menutup status bar (hanya berlaku di mode Aksesibilitas). Default aktif. */
+    fun stripEnabled(c: Context): Boolean = prefs(c).getBoolean("strip", true)
+
+    fun setStrip(c: Context, value: Boolean) {
+        prefs(c).edit().putBoolean("strip", value).apply()
+    }
+
+    fun registerListener(c: Context, l: SharedPreferences.OnSharedPreferenceChangeListener) {
+        prefs(c).registerOnSharedPreferenceChangeListener(l)
+    }
+
+    fun unregisterListener(c: Context, l: SharedPreferences.OnSharedPreferenceChangeListener) {
+        prefs(c).unregisterOnSharedPreferenceChangeListener(l)
     }
 
     fun isAccessibilityEnabled(c: Context): Boolean {

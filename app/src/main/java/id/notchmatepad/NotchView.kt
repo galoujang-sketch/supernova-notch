@@ -49,7 +49,9 @@ import kotlin.math.min
 class NotchView(
     private val ctx: Context,
     private val wm: WindowManager,
-    private val overlayType: Int = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+    private val overlayType: Int = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+    /** Tinggi strip panel atas (px). 0 = tanpa strip: pil berdiri sendiri dan menampilkan jam. */
+    private val stripHeight: Int = 0
 ) : FrameLayout(ctx) {
 
     private val ui = Handler(Looper.getMainLooper())
@@ -57,14 +59,16 @@ class NotchView(
     private fun dp(v: Int) = (v * density).toInt()
     private fun dpf(v: Float) = v * density
 
-    private val collapsedW = dp(190)
-    private val collapsedH = dp(30)
+    private val collapsedW = dp(COLLAPSED_DP)
+    // Dengan strip: pil menyatu dengan strip dan menjulur sedikit ke bawah seperti notch asli.
+    private val collapsedH = if (stripHeight > 0) stripHeight + dp(6) else dp(30)
     private val expandedW = min(dp(400), ctx.resources.displayMetrics.widthPixels - dp(24))
     private val expandedH = dp(176)
 
     private val gray = Color.parseColor("#9A9AA0")
     private val bg = GradientDrawable().apply { setColor(Color.BLACK) }
-    private var cornerPx = collapsedH / 2f
+    private val collapsedCorner = min(collapsedH / 2f, dpf(16f))
+    private var cornerPx = collapsedCorner
 
     private val params: WindowManager.LayoutParams = WindowManager.LayoutParams(
         collapsedW,
@@ -112,7 +116,7 @@ class NotchView(
     // ---- Tampilan ----
     private val collapsedLabel = label(13f, Color.WHITE, true).apply {
         gravity = Gravity.CENTER
-        setPadding(dp(14), 0, dp(14), 0)
+        setPadding(dp(14), 0, dp(14), if (stripHeight > 0) dp(6) else 0)
         layoutParams = FrameLayout.LayoutParams(collapsedW, collapsedH, Gravity.CENTER)
     }
 
@@ -333,7 +337,7 @@ class NotchView(
         params.width = (collapsedW + (expandedW - collapsedW) * t).toInt()
         params.height = (collapsedH + (expandedH - collapsedH) * t).toInt()
 
-        cornerPx = collapsedH / 2f + (dpf(30f) - collapsedH / 2f) * t
+        cornerPx = collapsedCorner + (dpf(30f) - collapsedCorner) * t
         bg.cornerRadii = floatArrayOf(0f, 0f, 0f, 0f, cornerPx, cornerPx, cornerPx, cornerPx)
         invalidateOutline()
 
@@ -451,7 +455,8 @@ class NotchView(
         collapsedLabel.text = when {
             np != null -> "♪ $np"
             timerRunning -> (if (focusMode) "Fokus " else "Istirahat ") + formatMs(remainingNow())
-            else -> clockFormat.format(Date())
+            // Dengan strip, jam sudah tampil di kiri strip, jadi pil dibiarkan kosong saat diam.
+            else -> if (stripHeight > 0) "" else clockFormat.format(Date())
         }
     }
 
@@ -503,6 +508,7 @@ class NotchView(
     }
 
     companion object {
+        const val COLLAPSED_DP = 190
         private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
         private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
         private const val FOCUS_MS = 25L * 60_000L

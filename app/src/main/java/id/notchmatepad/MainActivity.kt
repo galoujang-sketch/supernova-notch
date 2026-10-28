@@ -27,6 +27,7 @@ class MainActivity : Activity() {
     private lateinit var listenerStatus: TextView
     private lateinit var batteryStatus: TextView
     private lateinit var accessStatus: TextView
+    private lateinit var stripBtn: Button
     private lateinit var toggle: Button
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
@@ -83,6 +84,12 @@ class MainActivity : Activity() {
             }
         )
 
+        stripBtn = button("") {
+            Store.setStrip(this, !Store.stripEnabled(this))
+            refresh()
+        }
+        column.addView(stripBtn)
+
         toggle = button("") { toggleService() }
         column.addView(
             toggle,
@@ -118,6 +125,9 @@ class MainActivity : Activity() {
 
         val access = Store.isAccessibilityEnabled(this)
         accessStatus.text = (if (access) "✔ " else "✘ ") + "Mode di atas status bar (Aksesibilitas)"
+
+        stripBtn.text = "Panel atas hitam (jam, wifi, baterai di notch): " +
+            if (Store.stripEnabled(this)) "AKTIF" else "MATI"
 
         if (access) {
             toggle.text = "Notch dijalankan oleh Aksesibilitas"

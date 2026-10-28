@@ -3,29 +3,58 @@ package id.notchmatepad
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 
 /**
- * Menampung notch memakai jendela overlay jenis aksesibilitas. Jenis ini digambar DI ATAS
- * status bar, jadi pil bisa menempel di tepi atas layar dan tetap bisa disentuh.
+ * Menampung notch (dan strip panel atas) memakai jendela overlay jenis aksesibilitas. Jenis ini
+ * digambar DI ATAS status bar, jadi pil bisa menempel di tepi atas layar dan tetap bisa disentuh,
+ * dan status bar bawaan bisa ditutup strip hitam.
  *
  * Layanan ini tidak membaca isi layar maupun ketikan (canRetrieveWindowContent = false).
  */
 class NotchAccessibilityService : AccessibilityService() {
 
     private var notch: NotchView? = null
+    private var strip: StatusStrip? = null
+
+    private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "strip") build()
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         // Hindari notch ganda: matikan mode layanan biasa bila sedang jalan.
         stopService(Intent(this, NotchService::class.java))
 
-        cleanup()
-        val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        notch = NotchView(this, wm, WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY)
-            .also { it.attach() }
+        Store.registerListener(this, prefListener)
+        build()
         active = true
+    }
+
+    private fun build() {
+        detachViews()
+        val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+
+        var stripHeight = 0
+        if (Store.stripEnabled(this)) {
+            stripHeight = statusBarHeight()
+            val notchWidth = (NotchView.COLLAPSED_DP * resources.displayMetrics.density).toInt()
+            // Strip dipasang lebih dulu supaya pil berada di atasnya.
+            strip = StatusStrip(this, wm, type, stripHeight, notchWidth).also { it.attach() }
+        }
+        notch = NotchView(this, wm, type, stripHeight).also { it.attach() }
+    }
+
+    private fun statusBarHeight(): Int {
+        val id = resources.getIdentifier("status_bar_height", "dimen", "android")
+        return if (id > 0) {
+            resources.getDimensionPixelSize(id)
+        } else {
+            (24 * resources.displayMetrics.density).toInt()
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -46,9 +75,16 @@ class NotchAccessibilityService : AccessibilityService() {
         super.onDestroy()
     }
 
-    private fun cleanup() {
+    private fun detachViews() {
         notch?.detach()
         notch = null
+        strip?.detach()
+        strip = null
+    }
+
+    private fun cleanup() {
+        Store.unregisterListener(this, prefListener)
+        detachViews()
         active = false
     }
 
