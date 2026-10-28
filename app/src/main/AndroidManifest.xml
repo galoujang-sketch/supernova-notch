@@ -12,7 +12,6 @@
         android:name="android.permission.BLUETOOTH"
         android:maxSdkVersion="30" />
     <!-- Dibutuhkan untuk memuat ikon kecil notifikasi milik aplikasi lain di strip panel atas. -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
     <application
         android:allowBackup="true"

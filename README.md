@@ -1,0 +1,93 @@
+# Supernova Notch
+
+A Dynamic Island–style notch for Android tablets. It sits at the top edge of the screen and turns into a small space scene when idle: two stars orbit each other, merge, and burst into a tiny supernova.
+
+> Built and tested on a **Huawei MatePad 11.5 (HarmonyOS 3.1)**. Other Android tablets (Android 8+) should work but are not yet tested. See [Known limitations](#known-limitations).
+
+**English** · [Bahasa Indonesia](#bahasa-indonesia)
+
+## Features
+
+- **Music**: cover art, title, artist, seek bar, previous / play / next. Works with Spotify, YouTube Music and other players that show a media notification.
+- **Synced lyrics**: lines scroll across the top bar, passing behind the notch like karaoke (lyrics from [LRCLIB](https://lrclib.net)).
+- **Clean top bar**: while music plays, a black strip covers the system status bar and its info (time, notifications, Wi-Fi, battery, Bluetooth) moves into the notch. When music stops the strip fades out and the normal status bar comes back.
+- **Focus timer**: Pomodoro with adjustable focus and break lengths, countdown shown in the notch.
+- **Water reminder** and a week calendar.
+- **HUD pop-ups**: charger plugged / unplugged (with a bolt on the battery icon while charging), headphones connected, volume, Wi-Fi lost.
+- **Hides in fullscreen** apps (video, games). Can be turned off.
+- **Nova**, the mascot: a living idle scene that wakes up with a flash when you come back.
+
+## Install
+
+1. Download `SupernovaNotch.apk` from the [latest release](../../releases/latest).
+2. Allow installing from your browser or file manager ("install unknown apps"), then open the APK.
+3. Open the app and grant the permissions it lists:
+   - **Display over other apps**: to draw the notch.
+   - **Notification access**: to read what is playing and show notification icons.
+   - **Accessibility** (recommended): draws the notch above the status bar so it can sit flush with the top edge and be tapped. On **Android 13+** you may first need *App info → ⋮ → Allow restricted settings*.
+   - **Disable battery optimization**: otherwise the system may stop the notch in the background.
+
+## Privacy
+
+- No accounts, no ads, no analytics.
+- The Accessibility service does **not** read the screen or what you type (`canRetrieveWindowContent = false`).
+- The only network request is to `lrclib.net` for lyrics, and it sends only the song title, artist and duration.
+- Water count and timer settings are stored on the device only.
+
+## FAQ
+
+**Why is there a black strip at the top?** Apps cannot hide the system status bar, only cover it. The strip does that while music plays, so the status info can live inside the notch instead.
+
+**The notch disappears after a while.** Turn off battery optimization for the app. Some Android skins close background apps aggressively.
+
+**The notch hides when it should not (or does not hide in fullscreen).** Fullscreen detection depends on the device. You can turn it off in the app.
+
+**Lyrics are missing for a song.** Lyrics come from LRCLIB; songs that are not in its database show no lyrics.
+
+**Why not on the Play Store?** It relies on an Accessibility service for a display feature, which the Play Store restricts. It is distributed as an APK instead.
+
+**How do I update?** Install the newer APK over the old one.
+
+## Known limitations
+
+- Tested on one device so far. Reports from other tablets are very welcome.
+- The system volume panel still appears together with the notch volume HUD.
+- Bluetooth headphone battery level is not shown (Android does not expose it to normal apps).
+- Notch is centered at the top; position and size are not configurable yet.
+
+## Build
+
+```
+./gradlew assembleRelease
+```
+
+Requires JDK 17 and the Android SDK. Releases are built by GitHub Actions on every push to `main`. To sign with your own key, set the repository secrets `KEYSTORE_B64` (base64 of the keystore, alias `supernova`) and `KEYSTORE_PASSWORD`.
+
+## License
+
+[MIT](LICENSE)
+
+---
+
+## Bahasa Indonesia
+
+Notch ala Dynamic Island untuk tablet Android. Menempel di tepi atas layar, dan saat idle berubah jadi pemandangan antariksa mini: dua bintang saling mengorbit, menyatu, lalu meledak jadi supernova kecil.
+
+> Dibuat dan diuji di **Huawei MatePad 11.5 (HarmonyOS 3.1)**. Tablet Android lain (Android 8 ke atas) seharusnya bisa, tapi belum diuji.
+
+**Fitur**: kontrol musik dengan cover, lirik tersinkron yang bergulir di belakang notch, bar atas yang bersih (info status pindah ke notch saat musik main), timer fokus dengan durasi bisa diatur, pengingat air minum, kalender mingguan, HUD (charger, headphone, volume, Wi-Fi), sembunyi saat layar penuh, dan maskot Nova.
+
+**Pasang**
+1. Unduh `SupernovaNotch.apk` dari [rilis terbaru](../../releases/latest).
+2. Izinkan pemasangan dari sumber tidak dikenal, lalu buka APK.
+3. Buka aplikasi dan beri izin: tampil di atas aplikasi lain, akses notifikasi, Aksesibilitas (disarankan; di Android 13+ buka *Info aplikasi → ⋮ → Izinkan setelan terbatas* dulu), dan matikan hemat baterai.
+
+**Privasi**: tanpa akun, iklan, atau pelacakan. Layanan Aksesibilitas tidak membaca layar maupun ketikan. Satu-satunya permintaan jaringan ke `lrclib.net` untuk lirik, hanya mengirim judul, artis, dan durasi lagu. Data air minum dan timer disimpan di tablet saja.
+
+**FAQ singkat**
+- *Kenapa ada strip hitam?* Aplikasi tidak bisa menyembunyikan status bar, hanya menutupnya. Strip muncul saat musik main.
+- *Notch hilang sendiri?* Matikan hemat baterai untuk aplikasi ini.
+- *Lirik tidak muncul?* Lagu tidak ada di database LRCLIB.
+- *Cara memperbarui?* Pasang APK terbaru di atas yang lama.
+
+Lisensi: [MIT](LICENSE).

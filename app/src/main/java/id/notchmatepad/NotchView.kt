@@ -168,7 +168,7 @@ class NotchView(
     private var timerEndAt = 0L
 
     // Pil biasa menampilkan tanggal (jam sudah ada di status bar asli).
-    private val clockFormat = SimpleDateFormat("EEE, d MMM", Locale("id", "ID"))
+    private val clockFormat = SimpleDateFormat("EEE, d MMM", Locale.getDefault())
 
     // ---------------------------------------------------------------- tampilan: tab tertutup
 
@@ -285,7 +285,7 @@ class NotchView(
                 cornerRadius = dpf(14f)
             }
         }
-        card.addView(label(11f, gray).apply { text = "Air minum hari ini" }, LinearLayout.LayoutParams(MATCH, WRAP))
+        card.addView(label(11f, gray).apply { text = ctx.getString(R.string.water_today) }, LinearLayout.LayoutParams(MATCH, WRAP))
         card.addView(miniAmountV, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(2) })
         card.addView(miniBar, LinearLayout.LayoutParams(MATCH, dp(5)).also { it.topMargin = dp(6) })
         addView(card, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(8) })
@@ -311,7 +311,7 @@ class NotchView(
         }
     }
     private val timeV = label(38f, Color.WHITE, true).apply { gravity = Gravity.CENTER }
-    private val startBtn = pill("Mulai") { toggleTimer() }
+    private val startBtn = pill(ctx.getString(R.string.start)) { toggleTimer() }
 
     private val timerColumn = newColumn().also { p ->
         p.addView(modeV, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(10) })
@@ -343,7 +343,7 @@ class NotchView(
         p.addView(
             label(13f, gray).apply {
                 gravity = Gravity.CENTER
-                text = "Air minum hari ini"
+                text = ctx.getString(R.string.water_today)
             },
             LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(10) }
         )
@@ -639,8 +639,8 @@ class NotchView(
             when (i.action) {
                 Intent.ACTION_SCREEN_OFF -> if (modeT == 0f && !playing && !timerRunning) startDoze()
                 Intent.ACTION_SCREEN_ON, Intent.ACTION_USER_PRESENT -> wakeMascot(true)
-                Intent.ACTION_POWER_CONNECTED -> showHud(HudView.CHARGE, "Mengisi daya", "${batteryPct()}%")
-                Intent.ACTION_POWER_DISCONNECTED -> showHud(HudView.UNPLUG, "Daya dicabut", "${batteryPct()}%")
+                Intent.ACTION_POWER_CONNECTED -> showHud(HudView.CHARGE, ctx.getString(R.string.charging), "${batteryPct()}%")
+                Intent.ACTION_POWER_DISCONNECTED -> showHud(HudView.UNPLUG, ctx.getString(R.string.unplugged), "${batteryPct()}%")
                 "android.media.VOLUME_CHANGED_ACTION" -> {
                     val stream = i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1)
                     if (stream != AudioManager.STREAM_MUSIC && stream != AudioManager.STREAM_RING) return
@@ -650,7 +650,7 @@ class NotchView(
                     if (v >= 0) {
                         showHud(
                             HudView.VOLUME,
-                            if (stream == AudioManager.STREAM_RING) "Dering" else "Volume",
+                            ctx.getString(if (stream == AudioManager.STREAM_RING) R.string.ringer else R.string.volume),
                             "", v.toFloat() / mx
                         )
                     }
@@ -667,24 +667,24 @@ class NotchView(
 
         override fun onAudioDevicesAdded(added: Array<out android.media.AudioDeviceInfo>) {
             val d = added.firstOrNull { it.isSink && isHeadphone(it.type) } ?: return
-            val name = d.productName?.toString()?.takeIf { it.isNotBlank() } ?: "Headphone"
-            showHud(HudView.HEADPHONE, name, "Tersambung")
+            val name = d.productName?.toString()?.takeIf { it.isNotBlank() } ?: ctx.getString(R.string.headphones)
+            showHud(HudView.HEADPHONE, name, ctx.getString(R.string.connected))
         }
 
         override fun onAudioDevicesRemoved(removed: Array<out android.media.AudioDeviceInfo>) {
             val d = removed.firstOrNull { it.isSink && isHeadphone(it.type) } ?: return
-            val name = d.productName?.toString()?.takeIf { it.isNotBlank() } ?: "Headphone"
-            showHud(HudView.HEADPHONE, name, "Terputus")
+            val name = d.productName?.toString()?.takeIf { it.isNotBlank() } ?: ctx.getString(R.string.headphones)
+            showHud(HudView.HEADPHONE, name, ctx.getString(R.string.disconnected))
         }
     }
 
     private val wifiCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onLost(network: Network) {
-            ui.post { showHud(HudView.WIFI_OFF, "Wi-Fi terputus") }
+            ui.post { showHud(HudView.WIFI_OFF, ctx.getString(R.string.wifi_lost)) }
         }
 
         override fun onAvailable(network: Network) {
-            ui.post { showHud(HudView.WIFI_ON, "Wi-Fi tersambung") }
+            ui.post { showHud(HudView.WIFI_ON, ctx.getString(R.string.wifi_back)) }
         }
     }
 
@@ -859,9 +859,9 @@ class NotchView(
         val md = c?.metadata
         playing = c?.playbackState?.state == PlaybackState.STATE_PLAYING
         val title = md?.getString(MediaMetadata.METADATA_KEY_TITLE)
-        titleV.text = title ?: "Tidak ada musik"
+        titleV.text = title ?: ctx.getString(R.string.no_music)
         artistV.text = md?.getString(MediaMetadata.METADATA_KEY_ARTIST)
-            ?: if (Store.hasListenerAccess(ctx)) "Putar lagu di Spotify atau YouTube" else "Beri akses notifikasi di aplikasi"
+            ?: if (Store.hasListenerAccess(ctx)) ctx.getString(R.string.play_hint) else ctx.getString(R.string.need_access)
         playBtn.setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
 
         val art = findArt(md, c)
@@ -1030,8 +1030,8 @@ class NotchView(
 
     private fun updateTimerUi() {
         timeV.text = formatMs(remainingNow())
-        modeV.text = if (focusMode) "Fokus · ketuk untuk ganti" else "Istirahat · ketuk untuk ganti"
-        startBtn.text = if (timerRunning) "Jeda" else "Mulai"
+        modeV.text = ctx.getString(if (focusMode) R.string.focus_hint else R.string.break_hint)
+        startBtn.text = ctx.getString(if (timerRunning) R.string.pause else R.string.start)
     }
 
     // ---------------------------------------------------------------- air minum
@@ -1074,7 +1074,7 @@ class NotchView(
         val np = nowPlaying
         val zone: String? = when {
             np != null -> "♪ $np"
-            timerRunning -> (if (focusMode) "Fokus " else "Istirahat ") + formatMs(remainingNow())
+            timerRunning -> ctx.getString(if (focusMode) R.string.focus_prefix else R.string.break_prefix) + formatMs(remainingNow())
             else -> null
         }
         if (stripHeight > 0) {

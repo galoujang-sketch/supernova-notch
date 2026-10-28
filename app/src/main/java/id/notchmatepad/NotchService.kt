@@ -22,15 +22,15 @@ class NotchService : Service() {
 
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "Notch aktif", NotificationManager.IMPORTANCE_LOW)
+            NotificationChannel(CHANNEL_ID, getString(R.string.svc_channel), NotificationManager.IMPORTANCE_LOW)
         )
         val openApp = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
         )
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat)
-            .setContentTitle("Notch MatePad aktif")
-            .setContentText("Ketuk untuk membuka pengaturan")
+            .setContentTitle(getString(R.string.svc_title))
+            .setContentText(getString(R.string.svc_text))
             .setContentIntent(openApp)
             .setOngoing(true)
             .build()

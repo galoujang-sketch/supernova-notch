@@ -8,11 +8,11 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "id.notchmatepad"
+        applicationId = "id.supernovanotch"
         minSdk = 26
         targetSdk = 33
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionName = "1.0.0"
     }
 
     // Kunci debug tetap (bukan rahasia) supaya APK versi baru bisa menimpa versi lama.
@@ -25,10 +25,33 @@ android {
         }
     }
 
+    // Kunci rilis dibaca dari lingkungan CI (rahasia GitHub). Tanpa itu, build memakai kunci debug tetap.
+    val releaseKeystore = System.getenv("KEYSTORE_PATH")
+    if (releaseKeystore != null) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = "supernova"
+                keyPassword = System.getenv("KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = if (releaseKeystore != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
+    }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 
     compileOptions {

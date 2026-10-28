@@ -41,11 +41,10 @@ class MainActivity : Activity() {
             setPadding(dp(24), dp(32), dp(24), dp(32))
         }
 
-        column.addView(text("Notch MatePad", 28f, Color.parseColor("#111111"), true))
+        column.addView(text(getString(R.string.app_name), 28f, Color.parseColor("#111111"), true))
         column.addView(
             text(
-                "Pil kecil di atas layar untuk musik, timer fokus, dan pengingat minum. " +
-                    "Ketuk pil untuk membuka, geser kiri atau kanan untuk ganti halaman.",
+                getString(R.string.main_intro),
                 15f, Color.parseColor("#555555"), false
             ),
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -55,32 +54,31 @@ class MainActivity : Activity() {
         overlayStatus = text("", 15f, Color.parseColor("#111111"), true)
         column.addView(overlayStatus)
         column.addView(
-            button("Izinkan tampil di atas aplikasi lain") { open(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, true) }
+            button(getString(R.string.btn_overlay)) { open(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, true) }
         )
 
         listenerStatus = text("", 15f, Color.parseColor("#111111"), true)
         column.addView(listenerStatus, spaced())
         column.addView(
-            button("Beri akses notifikasi (untuk baca musik)") { open(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS, false) }
+            button(getString(R.string.btn_listener)) { open(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS, false) }
         )
 
         batteryStatus = text("", 15f, Color.parseColor("#111111"), true)
         column.addView(batteryStatus, spaced())
         column.addView(
-            button("Matikan hemat baterai untuk aplikasi ini") { requestBatteryExemption() }
+            button(getString(R.string.btn_battery)) { requestBatteryExemption() }
         )
 
         accessStatus = text("", 15f, Color.parseColor("#111111"), true)
         column.addView(accessStatus, spaced())
         column.addView(
             text(
-                "Disarankan: dengan mode ini pil menempel di tepi atas layar dan tetap bisa disentuh " +
-                    "(tanpa mode ini, pil berada di bawah status bar). Layanan ini tidak membaca isi layar.",
+                getString(R.string.access_hint),
                 13f, Color.parseColor("#555555"), false
             )
         )
         column.addView(
-            button("Aktifkan mode di atas status bar (Aksesibilitas)") {
+            button(getString(R.string.btn_access)) {
                 startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             }
         )
@@ -126,24 +124,28 @@ class MainActivity : Activity() {
         val pm = getSystemService(PowerManager::class.java)
         val battery = pm.isIgnoringBatteryOptimizations(packageName)
 
-        overlayStatus.text = (if (overlay) "✔ " else "✘ ") + "Tampil di atas aplikasi lain"
-        listenerStatus.text = (if (listener) "✔ " else "✘ ") + "Akses notifikasi (musik)"
-        batteryStatus.text = (if (battery) "✔ " else "✘ ") + "Bebas hemat baterai"
+        overlayStatus.text = (if (overlay) "✔ " else "✘ ") + getString(R.string.st_overlay)
+        listenerStatus.text = (if (listener) "✔ " else "✘ ") + getString(R.string.st_listener)
+        batteryStatus.text = (if (battery) "✔ " else "✘ ") + getString(R.string.st_battery)
 
         val access = Store.isAccessibilityEnabled(this)
-        accessStatus.text = (if (access) "✔ " else "✘ ") + "Mode di atas status bar (Aksesibilitas)"
+        accessStatus.text = (if (access) "✔ " else "✘ ") + getString(R.string.st_access)
 
-        stripBtn.text = "Mode bersih (status bar ditutup, info pindah ke notch): " +
-            if (Store.stripEnabled(this)) "AKTIF" else "MATI"
+        stripBtn.text = getString(
+            R.string.clean_mode,
+            getString(if (Store.stripEnabled(this)) R.string.on else R.string.off)
+        )
 
-        fsBtn.text = "Sembunyi saat layar penuh (video, game): " +
-            if (Store.hideInFullscreen(this)) "AKTIF" else "MATI"
+        fsBtn.text = getString(
+            R.string.fs_mode,
+            getString(if (Store.hideInFullscreen(this)) R.string.on else R.string.off)
+        )
 
         if (access) {
-            toggle.text = "Notch dijalankan oleh Aksesibilitas"
+            toggle.text = getString(R.string.toggle_by_acc)
             toggle.isEnabled = false
         } else {
-            toggle.text = if (NotchService.running) "Matikan notch" else "Nyalakan notch (mode biasa)"
+            toggle.text = getString(if (NotchService.running) R.string.toggle_stop else R.string.toggle_start)
             toggle.isEnabled = overlay || NotchService.running
         }
     }

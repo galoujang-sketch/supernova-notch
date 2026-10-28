@@ -19,11 +19,23 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Build debug APK
+      # Kunci rilis (opsional): isi rahasia KEYSTORE_B64 dan KEYSTORE_PASSWORD di pengaturan repo.
+      - name: Prepare release key
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           chmod +x gradlew
           set -o pipefail
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee build.log
 
       # Bila build gagal, tampilkan baris error kompilasi sebagai anotasi supaya mudah dibaca.
       - name: Report compile errors
@@ -34,17 +46,18 @@ jobs:
           done
 
       - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk NotchMatePad.apk
+        run: cp app/build/outputs/apk/release/app-release.apk SupernovaNotch.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: NotchMatePad
-          path: NotchMatePad.apk
+          name: SupernovaNotch
+          path: SupernovaNotch.apk
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: Notch MatePad build ${{ github.run_number }}
-          files: NotchMatePad.apk
-          prerelease: true
+          name: Supernova Notch build ${{ github.run_number }}
+          files: SupernovaNotch.apk
+          prerelease: false
+          make_latest: true

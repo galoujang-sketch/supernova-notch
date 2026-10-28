@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Supernova Notch</string>
+    <string name="accessibility_description">Hanya dipakai untuk menampilkan notch di atas status bar. Tidak membaca isi layar atau ketikan.</string>
+    <string name="main_intro">Pil kecil di atas layar untuk musik, timer fokus, dan pengingat minum. Ketuk pil untuk membuka, geser kiri atau kanan untuk ganti halaman.</string>
+    <string name="btn_overlay">Izinkan tampil di atas aplikasi lain</string>
+    <string name="btn_listener">Beri akses notifikasi (untuk baca musik)</string>
+    <string name="btn_battery">Matikan hemat baterai untuk aplikasi ini</string>
+    <string name="access_hint">Disarankan: dengan mode ini pil menempel di tepi atas layar dan tetap bisa disentuh (tanpa mode ini, pil berada di bawah status bar). Layanan ini tidak membaca isi layar.</string>
+    <string name="btn_access">Aktifkan mode di atas status bar (Aksesibilitas)</string>
+    <string name="st_overlay">Tampil di atas aplikasi lain</string>
+    <string name="st_listener">Akses notifikasi (musik)</string>
+    <string name="st_battery">Bebas hemat baterai</string>
+    <string name="st_access">Mode di atas status bar (Aksesibilitas)</string>
+    <string name="clean_mode">Mode bersih (status bar ditutup, info pindah ke notch): %1$s</string>
+    <string name="fs_mode">Sembunyi saat layar penuh (video, game): %1$s</string>
+    <string name="on">AKTIF</string>
+    <string name="off">MATI</string>
+    <string name="toggle_by_acc">Notch dijalankan oleh Aksesibilitas</string>
+    <string name="toggle_stop">Matikan notch</string>
+    <string name="toggle_start">Nyalakan notch (mode biasa)</string>
+    <string name="water_today">Air minum hari ini</string>
+    <string name="start">Mulai</string>
+    <string name="pause">Jeda</string>
+    <string name="volume">Volume</string>
+    <string name="ringer">Dering</string>
+    <string name="headphones">Headphone</string>
+    <string name="connected">Tersambung</string>
+    <string name="disconnected">Terputus</string>
+    <string name="wifi_lost">Wi-Fi terputus</string>
+    <string name="wifi_back">Wi-Fi tersambung</string>
+    <string name="charging">Mengisi daya</string>
+    <string name="unplugged">Daya dicabut</string>
+    <string name="no_music">Tidak ada musik</string>
+    <string name="play_hint">Putar lagu di Spotify atau YouTube</string>
+    <string name="need_access">Beri akses notifikasi di aplikasi</string>
+    <string name="focus_hint">Fokus · ketuk untuk ganti</string>
+    <string name="break_hint">Istirahat · ketuk untuk ganti</string>
+    <string name="focus_prefix">"Fokus "</string>
+    <string name="break_prefix">"Istirahat "</string>
+    <string name="svc_channel">Notch aktif</string>
+    <string name="svc_title">Supernova Notch aktif</string>
+    <string name="svc_text">Ketuk untuk membuka pengaturan</string>
+</resources>

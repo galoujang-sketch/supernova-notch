@@ -33,7 +33,7 @@ object Lyrics {
                 val c = URL("https://lrclib.net/api/get?$q").openConnection() as HttpURLConnection
                 c.connectTimeout = 6000
                 c.readTimeout = 6000
-                c.setRequestProperty("User-Agent", "NotchMatePad/0.1")
+                c.setRequestProperty("User-Agent", "SupernovaNotch/1.0")
                 if (c.responseCode == 200) {
                     val body = c.inputStream.bufferedReader().readText()
                     val lrc = JSONObject(body).optString("syncedLyrics", "")
