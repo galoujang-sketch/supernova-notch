@@ -613,9 +613,7 @@ class NotchView(
             ?: if (Store.hasListenerAccess(ctx)) "Putar lagu di Spotify atau YouTube" else "Beri akses notifikasi di aplikasi"
         playBtn.setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
 
-        val art = md?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-            ?: md?.getBitmap(MediaMetadata.METADATA_KEY_ART)
-            ?: md?.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
+        val art = findArt(md, c)
         if (art !== lastArt) {
             lastArt = art
             artV.setImageBitmap(art)
@@ -636,6 +634,66 @@ class NotchView(
         }
         updateProgress()
         updateCollapsed()
+    }
+
+    private var artUri: String? = null
+    private var uriBmp: Bitmap? = null
+
+    /**
+     * Cover album: bitmap di metadata (Spotify hanya mengirimnya untuk iklan), lalu ikon besar
+     * notifikasi media aplikasi itu, lalu URI gambar di metadata (diunduh di latar).
+     */
+    private fun findArt(md: MediaMetadata?, c: MediaController?): Bitmap? {
+        md?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)?.let { return it }
+        md?.getBitmap(MediaMetadata.METADATA_KEY_ART)?.let { return it }
+        md?.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)?.let { return it }
+        if (c != null) {
+            try {
+                val sbn = MediaWatcher.instance?.activeNotifications?.firstOrNull {
+                    it.packageName == c.packageName && it.notification.getLargeIcon() != null
+                }
+                val dr = sbn?.notification?.getLargeIcon()?.loadDrawable(ctx)
+                if (dr != null) {
+                    val w = max(1, dr.intrinsicWidth)
+                    val h = max(1, dr.intrinsicHeight)
+                    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                    dr.setBounds(0, 0, w, h)
+                    dr.draw(android.graphics.Canvas(bmp))
+                    return bmp
+                }
+            } catch (e: Exception) {
+            }
+        }
+        val u = md?.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
+            ?: md?.getString(MediaMetadata.METADATA_KEY_ART_URI)
+            ?: md?.getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI)
+        if (u == null) {
+            artUri = null
+            uriBmp = null
+            return null
+        }
+        if (u != artUri) {
+            artUri = u
+            uriBmp = null
+            Thread {
+                try {
+                    val bmp = if (u.startsWith("http")) {
+                        java.net.URL(u).openStream().use { android.graphics.BitmapFactory.decodeStream(it) }
+                    } else {
+                        ctx.contentResolver.openInputStream(android.net.Uri.parse(u))
+                            ?.use { android.graphics.BitmapFactory.decodeStream(it) }
+                    }
+                    if (bmp != null) ui.post {
+                        if (artUri == u) {
+                            uriBmp = bmp
+                            updateMusic()
+                        }
+                    }
+                } catch (e: Exception) {
+                }
+            }.start()
+        }
+        return uriBmp
     }
 
     private fun durationNow(): Long = controller?.metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
