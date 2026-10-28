@@ -977,14 +977,8 @@ class NotchView(
     }
 
     private fun diagArt(md: MediaMetadata?, c: MediaController?) {
-        val sb = StringBuilder("ART? ")
+        val sb = StringBuilder("ART2 ")
         try {
-            for (k in listOf("android.media.metadata.ALBUM_ART", "android.media.metadata.ART", "android.media.metadata.DISPLAY_ICON"))
-                sb.append(k.substringAfterLast('.')).append('=').append(if (md?.getBitmap(k) != null) "Y" else "n").append(' ')
-            for (k in listOf("android.media.metadata.ALBUM_ART_URI", "android.media.metadata.ART_URI", "android.media.metadata.DISPLAY_ICON_URI"))
-                sb.append(k.substringAfterLast('.')).append('=').append(md?.getString(k)?.take(40) ?: "-").append(' ')
-            sb.append("desc.bmp=").append(if (md?.description?.iconBitmap != null) "Y" else "n").append(' ')
-            sb.append("desc.uri=").append(md?.description?.iconUri?.toString()?.take(40) ?: "-").append(' ')
             val w = MediaWatcher.instance
             sb.append("listener=").append(if (w == null) "NULL" else "ok").append(' ')
             if (w != null && c != null) {
@@ -1003,6 +997,17 @@ class NotchView(
             sb.append("err ").append(e.javaClass.simpleName)
         }
         android.widget.Toast.makeText(ctx, sb.toString(), android.widget.Toast.LENGTH_LONG).show()
+        val u = md?.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI) ?: md?.description?.iconUri?.toString()
+        if (u != null) Thread {
+            val r = try {
+                val bmp = ctx.contentResolver.openInputStream(android.net.Uri.parse(u))
+                    ?.use { android.graphics.BitmapFactory.decodeStream(it) }
+                if (bmp != null) "URI OK " + bmp.width else "URI decode null"
+            } catch (e: Exception) {
+                "URI gagal: " + e.javaClass.simpleName + " " + (e.message ?: "").take(80)
+            }
+            ui.post { android.widget.Toast.makeText(ctx, r, android.widget.Toast.LENGTH_LONG).show() }
+        }.start()
     }
 
     private fun findArt(md: MediaMetadata?, c: MediaController?): Bitmap? {
