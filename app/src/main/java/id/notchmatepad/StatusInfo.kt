@@ -34,30 +34,46 @@ class StatusInfo(private val ctx: Context) {
     private val d = ctx.resources.displayMetrics.density
     private fun dp(v: Float) = v * d
 
-    private val dim = Color.parseColor("#55555A")
+    // Warna mengikuti tema: fg = teks/ikon, bar = latar strip, dim = ikon redup.
+    private var fg = Theme.fg(true)
+    private var bar = Theme.bar(true)
+    private var dim = Theme.dim(true)
+
+    /** Ganti warna sesuai mode terang/gelap. Gambar ulang dilakukan oleh pemanggil. */
+    fun setTheme(dark: Boolean) {
+        fg = Theme.fg(dark)
+        bar = Theme.bar(dark)
+        dim = Theme.dim(dark)
+        timePaint.color = fg
+        zonePaint.color = fg
+        pctPaint.color = fg
+        fill.color = fg
+        stroke.color = fg
+        notifIcons.forEach { it.setTint(fg) }
+    }
 
     private val timePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = fg
         textSize = dp(14f)
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
     private val zonePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = fg
         textSize = dp(12.5f)
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
     private val pctPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = fg
         textSize = dp(12f)
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = fg }
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = dp(1.6f)
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
-        color = Color.WHITE
+        color = fg
     }
     private val rect = RectF()
     private val path = Path()
@@ -143,7 +159,7 @@ class StatusInfo(private val ctx: Context) {
         notifKey = key
         notifIcons = seen.values.take(6).mapNotNull { sbn ->
             try {
-                sbn.notification.smallIcon?.loadDrawable(ctx)?.mutate()?.also { it.setTint(Color.WHITE) }
+                sbn.notification.smallIcon?.loadDrawable(ctx)?.mutate()?.also { it.setTint(fg) }
             } catch (e: Exception) {
                 null
             }
@@ -200,11 +216,11 @@ class StatusInfo(private val ctx: Context) {
         val bodyLeft = bodyRight - bw
         val top = cy - bh / 2f
 
-        stroke.color = Color.WHITE
+        stroke.color = fg
         rect.set(bodyLeft, top, bodyRight, top + bh)
         c.drawRoundRect(rect, dp(3f), dp(3f), stroke)
 
-        fill.color = Color.WHITE
+        fill.color = fg
         rect.set(bodyRight + dp(0.5f), cy - dp(2.5f), right, cy + dp(2.5f))
         c.drawRoundRect(rect, dp(1f), dp(1f), fill)
 
@@ -213,11 +229,11 @@ class StatusInfo(private val ctx: Context) {
         fill.color = when {
             charging -> Color.parseColor("#34C759")
             batteryPct <= 15 -> Color.parseColor("#FF453A")
-            else -> Color.WHITE
+            else -> fg
         }
         rect.set(bodyLeft + pad, top + pad, bodyLeft + pad + max(dp(1f), fillW), top + bh - pad)
         c.drawRoundRect(rect, dp(1.2f), dp(1.2f), fill)
-        fill.color = Color.WHITE
+        fill.color = fg
 
         val pct = "$batteryPct%"
         val tw = pctPaint.measureText(pct)
@@ -233,13 +249,13 @@ class StatusInfo(private val ctx: Context) {
         for (i in 1..3) {
             val r = dp(4.2f) * i
             rect.set(cx - r, baseY - r, cx + r, baseY + r)
-            stroke.color = if (i <= lit) Color.WHITE else dim
+            stroke.color = if (i <= lit) fg else dim
             c.drawArc(rect, 225f, 90f, false, stroke)
         }
-        fill.color = if (wifiOn) Color.WHITE else dim
+        fill.color = if (wifiOn) fg else dim
         c.drawCircle(cx, baseY, dp(1.4f), fill)
-        fill.color = Color.WHITE
-        stroke.color = Color.WHITE
+        fill.color = fg
+        stroke.color = fg
         return right - size - dp(12f)
     }
 
@@ -257,7 +273,7 @@ class StatusInfo(private val ctx: Context) {
         path.lineTo(px(0.5f), py(0f))
         path.lineTo(px(0.9f), py(0.3f))
         path.lineTo(px(0.1f), py(0.7f))
-        stroke.color = Color.WHITE
+        stroke.color = fg
         c.drawPath(path, stroke)
         return left - dp(12f)
     }
@@ -266,7 +282,7 @@ class StatusInfo(private val ctx: Context) {
         val s = dp(14f)
         val left = right - s
         val top = cy - s / 2f
-        fill.color = Color.WHITE
+        fill.color = fg
         rect.set(left + 0.2f * s, top + 0.05f * s, left + 0.8f * s, top + 0.65f * s)
         c.drawArc(rect, 180f, 180f, true, fill)
         rect.set(left + 0.2f * s, top + 0.35f * s, left + 0.8f * s, top + 0.75f * s)
@@ -276,10 +292,10 @@ class StatusInfo(private val ctx: Context) {
         c.drawCircle(left + 0.5f * s, top + 0.93f * s, 0.09f * s, fill)
 
         // Garis coret: tepi hitam dulu supaya terlihat "memotong" lonceng, lalu garis putih.
-        stroke.color = Color.BLACK
+        stroke.color = bar
         stroke.strokeWidth = dp(4f)
         c.drawLine(left + 0.1f * s, top + 0.05f * s, left + 0.95f * s, top + 1.0f * s, stroke)
-        stroke.color = Color.WHITE
+        stroke.color = fg
         stroke.strokeWidth = dp(1.6f)
         c.drawLine(left + 0.1f * s, top + 0.05f * s, left + 0.95f * s, top + 1.0f * s, stroke)
         return left - dp(12f)

@@ -1,5 +1,6 @@
 package id.notchmatepad
 
+import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.content.ComponentName
 import android.content.Context
@@ -78,7 +79,11 @@ class NotchView(
 
     private val gray = Color.parseColor("#9A9AA0")
     private val cardColor = Color.parseColor("#1C1C1E")
-    private val bg = GradientDrawable().apply { setColor(Color.BLACK) }
+
+    // Tab tertutup (mode strip) mengikuti mode terang/gelap; panel terbuka selalu gelap.
+    private var themeDark = Theme.isDark(ctx)
+    private fun collapsedColor(): Int = if (stripHeight > 0) Theme.bar(themeDark) else Color.BLACK
+    private val bg = GradientDrawable().apply { setColor(collapsedColor()) }
     private val collapsedCorner = min(collapsedH / 2f, dpf(16f))
     private var cornerPx = collapsedCorner
 
@@ -350,6 +355,15 @@ class NotchView(
         override fun run() {
             tickCount++
             if (tickCount % 6 == 0) refreshSessions()
+            if (stripHeight > 0 && tickCount % 2 == 0) {
+                val dark = Theme.isDark(ctx)
+                if (dark != themeDark) {
+                    themeDark = dark
+                    info.setTheme(dark)
+                    applyProgress(progress)
+                    infoBar.invalidate()
+                }
+            }
             if (stripHeight > 0 && tickCount % 4 == 0) info.readAll()
             handleTimerFinish()
             updateCollapsed()
@@ -381,6 +395,7 @@ class NotchView(
                 outline.setRoundRect(0, (-cornerPx).toInt(), view.width, view.height, cornerPx)
             }
         }
+        info.setTheme(themeDark)
         addView(collapsedView)
         addView(expandedBox)
         showPage(0)
@@ -496,6 +511,8 @@ class NotchView(
 
         cornerPx = collapsedCorner + (dpf(30f) - collapsedCorner) * t
         bg.cornerRadii = floatArrayOf(0f, 0f, 0f, 0f, cornerPx, cornerPx, cornerPx, cornerPx)
+        // Warna latar bertransisi dari warna tema (tertutup) ke hitam (panel terbuka).
+        bg.setColor(ArgbEvaluator().evaluate(t.coerceIn(0f, 1f), collapsedColor(), Color.BLACK) as Int)
         invalidateOutline()
 
         collapsedView.alpha = (1f - t * 2.5f).coerceIn(0f, 1f)
