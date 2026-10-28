@@ -986,10 +986,16 @@ class NotchView(
         if (c != null) {
             notificationArt(c.packageName)?.let { return it }
         }
-        val u = md?.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
-            ?: md?.getString(MediaMetadata.METADATA_KEY_ART_URI)
-            ?: md?.getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI)
-            ?: try { md?.description?.iconUri?.toString() } catch (e: Exception) { null }
+        val raw = listOf(
+            md?.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI),
+            md?.getString(MediaMetadata.METADATA_KEY_ART_URI),
+            md?.getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI),
+            try { md?.description?.iconUri?.toString() } catch (e: Exception) { null }
+        ).filterNotNull().filter { it.isNotBlank() }
+        // Spotify memberi "spotify:image:<id>" -> URL gambar publik; ambil yang bisa dibuka.
+        val u = raw.map {
+            if (it.startsWith("spotify:image:")) "https://i.scdn.co/image/" + it.removePrefix("spotify:image:") else it
+        }.firstOrNull { it.startsWith("http") || it.startsWith("content:") || it.startsWith("file:") }
         if (u == null) {
             artUri = null
             uriBmp = null
