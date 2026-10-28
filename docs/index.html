@@ -233,6 +233,12 @@ footer{padding:32px 0 48px;color:var(--mute);font-size:.92rem;border-top:1px sol
   </ul>
 </section>
 
+<section id="support" hidden>
+  <h2 data-id="Dukung proyek ini">Support the project</h2>
+  <p class="sub" data-id="Aplikasinya gratis dan akan tetap gratis. Kalau berguna buatmu, traktir kopi membantu saya terus memperbaikinya.">The app is free and will stay free. If it is useful to you, a coffee helps me keep improving it.</p>
+  <a class="btn" id="donate" href="#" rel="noopener" data-id="Traktir kopi">Buy me a coffee</a>
+</section>
+
 <section id="faq">
   <h2>FAQ</h2>
   <p class="sub" data-id="Pertanyaan yang paling sering muncul.">The questions that come up most.</p>
@@ -271,6 +277,9 @@ footer{padding:32px 0 48px;color:var(--mute);font-size:.92rem;border-top:1px sol
   for(var i=0;i<7;i++){var x=new Date(mon);x.setDate(mon.getDate()+i);
     wk.insertAdjacentHTML('beforeend','<div><small>'+names[i]+'</small><b'+(i===off?' class="now"':'')+'>'+x.getDate()+'</b></div>');}
   document.getElementById('mon').textContent=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'][d.getMonth()];
+  /* donate: fill in the link to show the section */
+  var DONATE_URL='';
+  if(DONATE_URL){document.getElementById('donate').href=DONATE_URL;document.getElementById('support').hidden=false}
   /* demo */
   var scr=document.getElementById('screen'),tabs=[].slice.call(document.querySelectorAll('#tabs button'));
   var order=['info','lyrics','panel','volume','idle'],cur=0,timer=null,stopped=false,hover=false;
