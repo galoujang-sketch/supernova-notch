@@ -3,6 +3,7 @@ package id.notchmatepad
 import android.animation.ValueAnimator
 import android.content.ComponentName
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Outline
@@ -34,6 +35,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
@@ -41,16 +43,20 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Pil hitam melayang di tengah atas layar.
- * Tertutup: jam (atau judul lagu / sisa timer). Ketuk untuk membuka.
- * Terbuka: tiga halaman (Musik, Timer fokus, Air minum). Geser kiri/kanan untuk ganti halaman,
- * geser ke atas atau ketuk di luar untuk menutup.
+ * Tab hitam di tengah atas layar, menempel ke tepi atas.
+ *
+ * Tertutup: tab kecil (kosong, atau judul lagu / sisa timer). Ketuk untuk membuka.
+ * Terbuka: panel lebar seperti notch MacBook.
+ *   Halaman 1: sampul album, judul, progres lagu (bisa diketuk untuk loncat), kontrol,
+ *              kalender minggu ini, dan ringkasan air minum.
+ *   Halaman 2: timer fokus dan pencatat air minum.
+ * Geser kiri/kanan untuk ganti halaman, geser ke atas atau ketuk di luar untuk menutup.
  */
 class NotchView(
     private val ctx: Context,
     private val wm: WindowManager,
     private val overlayType: Int = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-    /** Tinggi strip panel atas (px). 0 = tanpa strip: pil berdiri sendiri dan menampilkan jam. */
+    /** Tinggi strip panel atas (px). 0 = tanpa strip: tab berdiri sendiri. */
     private val stripHeight: Int = 0
 ) : FrameLayout(ctx) {
 
@@ -60,12 +66,13 @@ class NotchView(
     private fun dpf(v: Float) = v * density
 
     private val collapsedW = dp(COLLAPSED_DP)
-    // Dengan strip: pil menyatu dengan strip dan menjulur sedikit ke bawah seperti notch asli.
+    // Dengan strip: tab menyatu dengan strip dan menjulur sedikit ke bawah seperti notch asli.
     private val collapsedH = if (stripHeight > 0) stripHeight + dp(6) else dp(30)
-    private val expandedW = min(dp(400), ctx.resources.displayMetrics.widthPixels - dp(24))
-    private val expandedH = dp(176)
+    private val expandedW = min(dp(640), ctx.resources.displayMetrics.widthPixels - dp(24))
+    private val expandedH = dp(200)
 
     private val gray = Color.parseColor("#9A9AA0")
+    private val cardColor = Color.parseColor("#1C1C1E")
     private val bg = GradientDrawable().apply { setColor(Color.BLACK) }
     private val collapsedCorner = min(collapsedH / 2f, dpf(16f))
     private var cornerPx = collapsedCorner
@@ -90,11 +97,13 @@ class NotchView(
     private var animator: ValueAnimator? = null
     private var page = 0
     private var tickCount = 0
+    private var swipeLocked = false
 
     // ---- Musik ----
     private var controller: MediaController? = null
     private var playing = false
     private var nowPlaying: String? = null
+    private var lastArt: Bitmap? = null
 
     private val controllerCallback = object : MediaController.Callback() {
         override fun onMetadataChanged(metadata: MediaMetadata?) = updateMusic()
@@ -113,31 +122,127 @@ class NotchView(
 
     private val clockFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
 
-    // ---- Tampilan ----
+    // ---------------------------------------------------------------- tampilan: tab tertutup
+
     private val collapsedLabel = label(13f, Color.WHITE, true).apply {
         gravity = Gravity.CENTER
         setPadding(dp(14), 0, dp(14), if (stripHeight > 0) dp(6) else 0)
         layoutParams = FrameLayout.LayoutParams(collapsedW, collapsedH, Gravity.CENTER)
     }
 
-    private val titleV = label(17f, Color.WHITE, true).apply { gravity = Gravity.CENTER }
-    private val artistV = label(13f, gray).apply { gravity = Gravity.CENTER }
+    // ---------------------------------------------------------------- halaman 1: musik + kalender
+
+    private val artV = ImageView(ctx).apply {
+        scaleType = ImageView.ScaleType.CENTER_CROP
+        setBackgroundColor(Color.parseColor("#2C2C2E"))
+        clipToOutline = true
+        outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: Outline) {
+                outline.setRoundRect(0, 0, view.width, view.height, dpf(14f))
+            }
+        }
+    }
+    private val titleV = label(15f, Color.WHITE, true)
+    private val artistV = label(12f, gray)
+    private val elapsedV = label(10f, gray).apply { gravity = Gravity.START }
+    private val remainV = label(10f, gray).apply { gravity = Gravity.END }
+
+    private val progressBar = ProgressPill(ctx).apply {
+        barPx = dp(4).toFloat()
+        setOnTouchListener { v, e ->
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    swipeLocked = true
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    val d = durationNow()
+                    if (d > 0L && v.width > 0) {
+                        val f = (e.x / v.width).coerceIn(0f, 1f)
+                        controller?.transportControls?.seekTo((d * f).toLong())
+                    }
+                    resetAutoCollapse()
+                    true
+                }
+                else -> true
+            }
+        }
+    }
+
     private val playBtn = iconBtn(R.drawable.ic_play) {
         val c = controller?.transportControls
         if (playing) c?.pause() else c?.play()
     }
-    private val musicPage = newPage().also { p ->
-        p.addView(titleV, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(10) })
-        p.addView(artistV, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(4) })
-        val row = LinearLayout(ctx).apply {
+
+    private val homeLeft = LinearLayout(ctx).apply {
+        orientation = LinearLayout.VERTICAL
+
+        val rowA = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        rowA.addView(artV, LinearLayout.LayoutParams(dp(80), dp(80)))
+        val texts = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        texts.addView(titleV, LinearLayout.LayoutParams(MATCH, WRAP))
+        texts.addView(artistV, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(3) })
+        rowA.addView(texts, LinearLayout.LayoutParams(0, MATCH, 1f).also { it.leftMargin = dp(12) })
+        addView(rowA, LinearLayout.LayoutParams(MATCH, dp(80)))
+
+        val rowB = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        rowB.addView(elapsedV, LinearLayout.LayoutParams(dp(34), WRAP))
+        rowB.addView(progressBar, LinearLayout.LayoutParams(0, MATCH, 1f).also {
+            it.leftMargin = dp(6)
+            it.rightMargin = dp(6)
+        })
+        rowB.addView(remainV, LinearLayout.LayoutParams(dp(34), WRAP))
+        addView(rowB, LinearLayout.LayoutParams(MATCH, dp(20)).also { it.topMargin = dp(4) })
+
+        val rowC = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
-        row.addView(iconBtn(R.drawable.ic_prev) { controller?.transportControls?.skipToPrevious() }, LinearLayout.LayoutParams(dp(56), dp(48)))
-        row.addView(playBtn, LinearLayout.LayoutParams(dp(64), dp(48)))
-        row.addView(iconBtn(R.drawable.ic_next) { controller?.transportControls?.skipToNext() }, LinearLayout.LayoutParams(dp(56), dp(48)))
-        p.addView(row, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(14) })
+        rowC.addView(iconBtn(R.drawable.ic_prev) { controller?.transportControls?.skipToPrevious() }, LinearLayout.LayoutParams(dp(56), dp(40)))
+        rowC.addView(playBtn, LinearLayout.LayoutParams(dp(64), dp(40)))
+        rowC.addView(iconBtn(R.drawable.ic_next) { controller?.transportControls?.skipToNext() }, LinearLayout.LayoutParams(dp(56), dp(40)))
+        addView(rowC, LinearLayout.LayoutParams(MATCH, WRAP))
     }
+
+    private val weekStrip = WeekStrip(ctx)
+    private val miniAmountV = label(13f, Color.WHITE, true)
+    private val miniBar = ProgressPill(ctx)
+
+    private val homeRight = LinearLayout(ctx).apply {
+        orientation = LinearLayout.VERTICAL
+        addView(weekStrip, LinearLayout.LayoutParams(MATCH, dp(78)))
+
+        val card = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+            background = GradientDrawable().apply {
+                setColor(cardColor)
+                cornerRadius = dpf(14f)
+            }
+        }
+        card.addView(label(11f, gray).apply { text = "Air minum hari ini" }, LinearLayout.LayoutParams(MATCH, WRAP))
+        card.addView(miniAmountV, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(2) })
+        card.addView(miniBar, LinearLayout.LayoutParams(MATCH, dp(5)).also { it.topMargin = dp(6) })
+        addView(card, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(8) })
+    }
+
+    private val homePage = LinearLayout(ctx).apply {
+        orientation = LinearLayout.HORIZONTAL
+        layoutParams = FrameLayout.LayoutParams(MATCH, MATCH)
+        addView(homeLeft, LinearLayout.LayoutParams(0, MATCH, 1.4f))
+        addView(homeRight, LinearLayout.LayoutParams(0, MATCH, 1f).also { it.leftMargin = dp(20) })
+    }
+
+    // ---------------------------------------------------------------- halaman 2: timer + air minum
 
     private val modeV = label(13f, gray).apply {
         gravity = Gravity.CENTER
@@ -151,9 +256,10 @@ class NotchView(
     }
     private val timeV = label(38f, Color.WHITE, true).apply { gravity = Gravity.CENTER }
     private val startBtn = pill("Mulai") { toggleTimer() }
-    private val timerPage = newPage().also { p ->
-        p.addView(modeV, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(8) })
-        p.addView(timeV, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(4) })
+
+    private val timerColumn = newColumn().also { p ->
+        p.addView(modeV, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(10) })
+        p.addView(timeV, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(6) })
         val row = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -164,18 +270,22 @@ class NotchView(
             timerRemaining = if (focusMode) FOCUS_MS else BREAK_MS
             updateTimerUi()
         })
-        p.addView(row, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(12) })
+        p.addView(row, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(16) })
     }
 
     private val amountV = label(24f, Color.WHITE, true).apply { gravity = Gravity.CENTER }
     private val bar = ProgressPill(ctx)
-    private val waterPage = newPage().also { p ->
+
+    private val waterColumn = newColumn().also { p ->
         p.addView(
-            label(13f, gray).apply { gravity = Gravity.CENTER; text = "Air minum hari ini" },
-            LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(8) }
+            label(13f, gray).apply {
+                gravity = Gravity.CENTER
+                text = "Air minum hari ini"
+            },
+            LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(10) }
         )
-        p.addView(amountV, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(4) })
-        p.addView(bar, LinearLayout.LayoutParams(MATCH, dp(8)).also { it.topMargin = dp(10) })
+        p.addView(amountV, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(6) })
+        p.addView(bar, LinearLayout.LayoutParams(MATCH, dp(8)).also { it.topMargin = dp(12) })
         val row = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -188,10 +298,26 @@ class NotchView(
             Store.addWater(ctx, -Store.water(ctx))
             updateWaterUi()
         })
-        p.addView(row, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(12) })
+        p.addView(row, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = dp(16) })
     }
 
-    private val pages = listOf(musicPage, timerPage, waterPage)
+    private val toolsPage = LinearLayout(ctx).apply {
+        orientation = LinearLayout.HORIZONTAL
+        layoutParams = FrameLayout.LayoutParams(MATCH, MATCH)
+        addView(timerColumn, LinearLayout.LayoutParams(0, MATCH, 1f))
+        val divider = View(ctx).apply { setBackgroundColor(Color.parseColor("#2C2C2E")) }
+        addView(divider, LinearLayout.LayoutParams(dp(1), MATCH).also {
+            it.topMargin = dp(10)
+            it.bottomMargin = dp(10)
+            it.leftMargin = dp(16)
+            it.rightMargin = dp(16)
+        })
+        addView(waterColumn, LinearLayout.LayoutParams(0, MATCH, 1f))
+    }
+
+    // ---------------------------------------------------------------- kerangka
+
+    private val pages = listOf<View>(homePage, toolsPage)
     private val dots = Dots(ctx)
 
     private val pagesFrame = FrameLayout(ctx).also { f ->
@@ -200,7 +326,7 @@ class NotchView(
 
     private val expandedBox = LinearLayout(ctx).apply {
         orientation = LinearLayout.VERTICAL
-        setPadding(dp(18), dp(12), dp(18), dp(12))
+        setPadding(dp(22), dp(14), dp(22), dp(10))
         layoutParams = FrameLayout.LayoutParams(expandedW, expandedH, Gravity.TOP or Gravity.CENTER_HORIZONTAL)
         addView(pagesFrame, LinearLayout.LayoutParams(MATCH, 0, 1f))
         addView(dots, LinearLayout.LayoutParams(MATCH, dp(10)))
@@ -215,8 +341,15 @@ class NotchView(
             handleTimerFinish()
             updateCollapsed()
             if (expanded) {
-                if (page == 1) updateTimerUi()
-                if (page == 2) updateWaterUi()
+                if (page == 0) {
+                    updateProgress()
+                    updateWaterUi()
+                    weekStrip.invalidate()
+                }
+                if (page == 1) {
+                    updateTimerUi()
+                    updateWaterUi()
+                }
             }
             ui.postDelayed(this, 500)
         }
@@ -289,6 +422,7 @@ class NotchView(
             MotionEvent.ACTION_DOWN -> {
                 downX = ev.x
                 downY = ev.y
+                swipeLocked = false
                 resetAutoCollapse()
             }
             MotionEvent.ACTION_UP -> {
@@ -296,9 +430,9 @@ class NotchView(
                 val dy = ev.y - downY
                 if (!expanded) {
                     if (abs(dx) < dp(12) && abs(dy) < dp(12)) setExpanded(true)
-                } else if (abs(dx) > dp(56) && abs(dx) > abs(dy)) {
+                } else if (!swipeLocked && abs(dx) > dp(56) && abs(dx) > abs(dy)) {
                     changePage(if (dx < 0) 1 else -1)
-                } else if (dy < -dp(40) && abs(dy) > abs(dx)) {
+                } else if (!swipeLocked && dy < -dp(40) && abs(dy) > abs(dx)) {
                     setExpanded(false)
                 }
             }
@@ -313,8 +447,8 @@ class NotchView(
         expanded = value
         animator?.cancel()
         animator = ValueAnimator.ofFloat(progress, if (value) 1f else 0f).apply {
-            duration = if (value) 340L else 240L
-            interpolator = if (value) OvershootInterpolator(0.8f) else DecelerateInterpolator()
+            duration = if (value) 360L else 240L
+            interpolator = if (value) OvershootInterpolator(0.7f) else DecelerateInterpolator()
             addUpdateListener {
                 progress = it.animatedValue as Float
                 applyProgress(progress)
@@ -330,7 +464,7 @@ class NotchView(
 
     private fun resetAutoCollapse() {
         ui.removeCallbacks(autoCollapse)
-        if (expanded) ui.postDelayed(autoCollapse, 8000)
+        if (expanded) ui.postDelayed(autoCollapse, 10000)
     }
 
     private fun applyProgress(t: Float) {
@@ -366,8 +500,15 @@ class NotchView(
         pages.forEachIndexed { i, v -> v.visibility = if (i == n) View.VISIBLE else View.GONE }
         dots.count = pages.size
         dots.active = n
-        if (n == 1) updateTimerUi()
-        if (n == 2) updateWaterUi()
+        if (n == 0) {
+            updateProgress()
+            updateWaterUi()
+            weekStrip.invalidate()
+        }
+        if (n == 1) {
+            updateTimerUi()
+            updateWaterUi()
+        }
     }
 
     // ---------------------------------------------------------------- musik
@@ -398,8 +539,39 @@ class NotchView(
         artistV.text = md?.getString(MediaMetadata.METADATA_KEY_ARTIST)
             ?: if (Store.hasListenerAccess(ctx)) "Putar lagu di Spotify atau YouTube" else "Beri akses notifikasi di aplikasi"
         playBtn.setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
+
+        val art = md?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+            ?: md?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+            ?: md?.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
+        if (art !== lastArt) {
+            lastArt = art
+            artV.setImageBitmap(art)
+        }
+
         nowPlaying = if (playing && title != null) title else null
+        updateProgress()
         updateCollapsed()
+    }
+
+    private fun durationNow(): Long = controller?.metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
+
+    private fun positionNow(): Long {
+        val st = controller?.playbackState ?: return 0L
+        var pos = st.position
+        if (pos < 0L) return 0L
+        if (st.state == PlaybackState.STATE_PLAYING) {
+            val dt = SystemClock.elapsedRealtime() - st.lastPositionUpdateTime
+            pos += (dt * st.playbackSpeed).toLong()
+        }
+        return pos
+    }
+
+    private fun updateProgress() {
+        val d = durationNow()
+        val p = if (d > 0L) positionNow().coerceIn(0L, d) else positionNow()
+        progressBar.fraction = if (d > 0L) p.toFloat() / d.toFloat() else 0f
+        elapsedV.text = formatPos(p)
+        remainV.text = if (d > 0L) "-" + formatPos(d - p) else "--:--"
     }
 
     // ---------------------------------------------------------------- timer
@@ -444,18 +616,21 @@ class NotchView(
 
     private fun updateWaterUi() {
         val ml = Store.water(ctx)
+        val f = min(1f, ml / Store.GOAL_ML.toFloat())
         amountV.text = "$ml / ${Store.GOAL_ML} ml"
-        bar.fraction = min(1f, ml / Store.GOAL_ML.toFloat())
+        bar.fraction = f
+        miniAmountV.text = "$ml / ${Store.GOAL_ML} ml"
+        miniBar.fraction = f
     }
 
-    // ---------------------------------------------------------------- pil tertutup
+    // ---------------------------------------------------------------- tab tertutup
 
     private fun updateCollapsed() {
         val np = nowPlaying
         collapsedLabel.text = when {
             np != null -> "♪ $np"
             timerRunning -> (if (focusMode) "Fokus " else "Istirahat ") + formatMs(remainingNow())
-            // Dengan strip, jam sudah tampil di kiri strip, jadi pil dibiarkan kosong saat diam.
+            // Dengan strip, jam sudah tampil di kiri strip, jadi tab dibiarkan kosong saat diam.
             else -> if (stripHeight > 0) "" else clockFormat.format(Date())
         }
     }
@@ -463,6 +638,11 @@ class NotchView(
     private fun formatMs(ms: Long): String {
         val s = (ms + 999) / 1000
         return String.format(Locale.US, "%02d:%02d", s / 60, s % 60)
+    }
+
+    private fun formatPos(ms: Long): String {
+        val s = max(0L, ms) / 1000
+        return String.format(Locale.US, "%d:%02d", s / 60, s % 60)
     }
 
     // ---------------------------------------------------------------- pembantu pembuat view
@@ -476,15 +656,14 @@ class NotchView(
         includeFontPadding = false
     }
 
-    private fun newPage() = LinearLayout(ctx).apply {
+    private fun newColumn() = LinearLayout(ctx).apply {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER_HORIZONTAL
-        layoutParams = FrameLayout.LayoutParams(MATCH, MATCH)
     }
 
     private fun iconBtn(res: Int, click: () -> Unit) = ImageView(ctx).apply {
         setImageResource(res)
-        setPadding(dp(12), dp(10), dp(12), dp(10))
+        setPadding(dp(12), dp(8), dp(12), dp(8))
         setOnClickListener {
             click()
             resetAutoCollapse()
@@ -516,7 +695,7 @@ class NotchView(
     }
 }
 
-/** Bilah progres bulat untuk halaman air minum. */
+/** Bilah progres bulat. Bila barPx > 0, bilah digambar setebal itu di tengah area sentuh yang lebih tinggi. */
 class ProgressPill(c: Context) : View(c) {
     var fraction = 0f
         set(value) {
@@ -524,24 +703,28 @@ class ProgressPill(c: Context) : View(c) {
             invalidate()
         }
 
+    var barPx = 0f
+
     private val track = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#2C2C2E") }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#4FC3F7") }
     private val rect = RectF()
 
     override fun onDraw(canvas: Canvas) {
-        val h = height.toFloat()
-        rect.set(0f, 0f, width.toFloat(), h)
+        val full = height.toFloat()
+        val h = if (barPx > 0f) min(barPx, full) else full
+        val top = (full - h) / 2f
+        rect.set(0f, top, width.toFloat(), top + h)
         canvas.drawRoundRect(rect, h / 2, h / 2, track)
         if (fraction > 0f) {
-            rect.set(0f, 0f, max(h, width * fraction), h)
+            rect.set(0f, top, max(h, width * fraction), top + h)
             canvas.drawRoundRect(rect, h / 2, h / 2, fill)
         }
     }
 }
 
-/** Titik penanda halaman di bawah pil. */
+/** Titik penanda halaman di bawah panel. */
 class Dots(c: Context) : View(c) {
-    var count = 3
+    var count = 2
         set(value) {
             field = value
             invalidate()
@@ -563,6 +746,67 @@ class Dots(c: Context) : View(c) {
         val cy = height / 2f
         for (i in 0 until count) {
             canvas.drawCircle(startX + i * gap, cy, r, if (i == active) on else off)
+        }
+    }
+}
+
+/** Kalender satu minggu (Senin sampai Minggu) dengan hari ini disorot, seperti pada referensi. */
+class WeekStrip(c: Context) : View(c) {
+    private val d = resources.displayMetrics.density
+
+    private val monthPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        textSize = d * 14f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+    private val dayNamePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#9A9AA0")
+        textSize = d * 10.5f
+        textAlign = Paint.Align.CENTER
+    }
+    private val numPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        textSize = d * 13f
+        textAlign = Paint.Align.CENTER
+    }
+    private val numBoldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        textSize = d * 13f
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+    private val todayBg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#0A84FF") }
+
+    private val monthFormat = SimpleDateFormat("MMMM", Locale.getDefault())
+    private val dayFormat = SimpleDateFormat("EEE", Locale.getDefault())
+
+    override fun onDraw(canvas: Canvas) {
+        val now = Calendar.getInstance()
+        val todayYear = now.get(Calendar.YEAR)
+        val todayDoy = now.get(Calendar.DAY_OF_YEAR)
+
+        canvas.drawText(monthFormat.format(now.time), 0f, d * 14f, monthPaint)
+
+        val start = Calendar.getInstance()
+        start.firstDayOfWeek = Calendar.MONDAY
+        start.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+
+        val colW = width / 7f
+        val nameY = d * 38f
+        val numCy = d * 58f
+        for (i in 0..6) {
+            val day = start.clone() as Calendar
+            day.add(Calendar.DAY_OF_MONTH, i)
+            val cx = colW * i + colW / 2f
+
+            val name = dayFormat.format(day.time).take(3)
+            canvas.drawText(name, cx, nameY, dayNamePaint)
+
+            val isToday = day.get(Calendar.YEAR) == todayYear && day.get(Calendar.DAY_OF_YEAR) == todayDoy
+            val num = day.get(Calendar.DAY_OF_MONTH).toString()
+            val paint = if (isToday) numBoldPaint else numPaint
+            if (isToday) canvas.drawCircle(cx, numCy, d * 12f, todayBg)
+            canvas.drawText(num, cx, numCy - (paint.ascent() + paint.descent()) / 2f, paint)
         }
     }
 }
