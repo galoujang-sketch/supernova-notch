@@ -286,7 +286,7 @@ footer a{color:#fff}
   <div class="wrap">
     <h2 data-id="Dukung Supernova Notch">Support Supernova Notch</h2>
     <p class="sub" data-id="Aplikasinya gratis dan akan tetap gratis. Dukunganmu membantu Supernova Notch terus berkembang.">The app is free and will stay free. Your support helps Supernova Notch keep growing.</p>
-    <a class="btn" id="donate" href="#support" rel="noopener" aria-disabled="true" style="background:#fff;color:var(--ink);border-color:#fff" data-id="Donasi">Donate</a>
+    <a class="btn" id="donate" href="#support" rel="noopener" target="_blank" style="background:#fff;color:var(--ink);border-color:#fff" data-id="Donasi">Donate</a>
   </div>
 </section>
 
@@ -338,7 +338,7 @@ footer a{color:#fff}
   document.addEventListener('visibilitychange',function(){if(!document.hidden&&!RM)requestAnimationFrame(sloop)});
   var srz;window.addEventListener('resize',function(){clearTimeout(srz);srz=setTimeout(function(){ssize();sdraw(0)},150)});
   /* donate: fill in the link to show the section */
-  var DONATE_URL='';
+  var DONATE_URL='https://trakteer.id/supernovateam/gift';
   var dn=document.getElementById('donate');if(DONATE_URL){dn.href=DONATE_URL;document.getElementById('support').hidden=false}
   var scr=document.getElementById('screen'),tabs=[].slice.call(document.querySelectorAll('#tabs button'));
   

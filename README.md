@@ -8,6 +8,8 @@ A Dynamic Island–style notch for Android tablets. It sits at the top edge of t
 
 Inspired by [Nusa](https://rama2555.github.io/nusa/), which was the reference for building this app. / Terinspirasi dari [Nusa](https://rama2555.github.io/nusa/), yang jadi referensi untuk membuat aplikasi ini.
 
+**Support / Dukung:** https://trakteer.id/supernovateam/gift
+
 **English** · [Bahasa Indonesia](#bahasa-indonesia)
 
 ## Features
