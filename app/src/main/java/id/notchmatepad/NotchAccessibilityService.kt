@@ -46,6 +46,7 @@ class NotchAccessibilityService : AccessibilityService() {
         }
         notch = NotchView(this, wm, type, stripHeight).also {
             it.onLyric = { line -> strip?.setLyric(line) }
+            it.onPlaying = { p -> strip?.setShown(p) }
             it.attach()
         }
     }

@@ -67,13 +67,20 @@ class NotchView(
     private fun dpf(v: Float) = v * density
 
     // Dengan strip, tab tertutup dilebarkan untuk memuat jam, ikon notifikasi, dan status.
-    private val collapsedW = if (stripHeight > 0) {
+    private val pillW = dp(COLLAPSED_DP)
+    private val pillH = dp(30)
+    private val infoW = if (stripHeight > 0) {
         min(dp(INFO_DP), ctx.resources.displayMetrics.widthPixels - dp(24))
     } else {
-        dp(COLLAPSED_DP)
+        pillW
     }
-    // Dengan strip: tab menyatu dengan strip dan menjulur sedikit ke bawah seperti notch asli.
-    private val collapsedH = if (stripHeight > 0) stripHeight + dp(6) else dp(30)
+    private val infoH = if (stripHeight > 0) stripHeight + dp(6) else pillH
+
+    // 0 = pil biasa (tidak ada musik, status bar asli terlihat), 1 = tab lebar + strip (musik main).
+    private var modeT = 0f
+    private var modeAnim: ValueAnimator? = null
+    private val collapsedW get() = (pillW + (infoW - pillW) * modeT).toInt()
+    private val collapsedH get() = (pillH + (infoH - pillH) * modeT).toInt()
     private val expandedW = min(dp(640), ctx.resources.displayMetrics.widthPixels - dp(24))
     private val expandedH = dp(200)
 
@@ -84,12 +91,12 @@ class NotchView(
     private var themeDark = true
     private fun collapsedColor(): Int = Color.BLACK
     private val bg = GradientDrawable().apply { setColor(collapsedColor()) }
-    private val collapsedCorner = min(collapsedH / 2f, dpf(16f))
-    private var cornerPx = collapsedCorner
+    private val collapsedCorner get() = min(collapsedH / 2f, dpf(16f))
+    private var cornerPx = min(pillH / 2f, dpf(16f))
 
     private val params: WindowManager.LayoutParams = WindowManager.LayoutParams(
-        collapsedW,
-        collapsedH,
+        pillW,
+        pillH,
         overlayType,
         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -119,6 +126,12 @@ class NotchView(
 
     /** Dipanggil saat baris lirik berganti (null = tidak ada). Strip menggulirkannya di belakang notch. */
     var onLyric: ((String?) -> Unit)? = null
+
+    /** Dipanggil saat status putar berubah; strip muncul (fade in) hanya selama musik main. */
+    var onPlaying: ((Boolean) -> Unit)? = null
+    private var lastPlaying: Boolean? = null
+    private var lyricKey: String? = null
+    private var lyricIdx = -1
     private var lastArt: Bitmap? = null
 
     private val controllerCallback = object : MediaController.Callback() {
@@ -142,16 +155,15 @@ class NotchView(
 
     private val collapsedLabel = label(13f, Color.WHITE, true).apply {
         gravity = Gravity.CENTER
-        setPadding(dp(14), 0, dp(14), if (stripHeight > 0) dp(6) else 0)
-        layoutParams = FrameLayout.LayoutParams(collapsedW, collapsedH, Gravity.CENTER)
+        setPadding(dp(14), 0, dp(14), 0)
+        layoutParams = FrameLayout.LayoutParams(pillW, pillH, Gravity.TOP or Gravity.CENTER_HORIZONTAL)
     }
 
     // Mode strip: info status (jam, ikon notifikasi, wifi, baterai, ...) digambar di dalam tab.
     private val info = StatusInfo(ctx)
     private val infoBar = InfoBar(ctx, info, stripHeight).apply {
-        layoutParams = FrameLayout.LayoutParams(collapsedW, collapsedH, Gravity.TOP)
+        layoutParams = FrameLayout.LayoutParams(infoW, infoH, Gravity.TOP or Gravity.CENTER_HORIZONTAL)
     }
-    private val collapsedView: View = if (stripHeight > 0) infoBar else collapsedLabel
 
     // ---------------------------------------------------------------- halaman 1: musik + kalender
 
@@ -395,7 +407,8 @@ class NotchView(
             }
         }
         info.setTheme(themeDark)
-        addView(collapsedView)
+        addView(collapsedLabel)
+        if (stripHeight > 0) addView(infoBar)
         addView(expandedBox)
         showPage(0)
         applyProgress(0f)
@@ -504,6 +517,22 @@ class NotchView(
         if (expanded) ui.postDelayed(autoCollapse, 10000)
     }
 
+    /** Beralih antara pil biasa dan tab lebar + strip, dengan transisi halus. */
+    private fun setStripMode(on: Boolean) {
+        if (stripHeight <= 0) return
+        val target = if (on) 1f else 0f
+        if (modeAnim == null && modeT == target) return
+        modeAnim?.cancel()
+        modeAnim = ValueAnimator.ofFloat(modeT, target).apply {
+            duration = 450
+            addUpdateListener {
+                modeT = it.animatedValue as Float
+                applyProgress(progress)
+            }
+            start()
+        }
+    }
+
     private fun applyProgress(t: Float) {
         params.width = (collapsedW + (expandedW - collapsedW) * t).toInt()
         params.height = (collapsedH + (expandedH - collapsedH) * t).toInt()
@@ -514,8 +543,12 @@ class NotchView(
         bg.setColor(ArgbEvaluator().evaluate(t.coerceIn(0f, 1f), collapsedColor(), Color.BLACK) as Int)
         invalidateOutline()
 
-        collapsedView.alpha = (1f - t * 2.5f).coerceIn(0f, 1f)
-        collapsedView.visibility = if (t > 0.45f) View.INVISIBLE else View.VISIBLE
+        val a = (1f - t * 2.5f).coerceIn(0f, 1f)
+        val hide = if (t > 0.45f) View.INVISIBLE else View.VISIBLE
+        collapsedLabel.alpha = a * (1f - modeT)
+        collapsedLabel.visibility = if (modeT >= 0.99f) View.INVISIBLE else hide
+        infoBar.alpha = a * modeT
+        infoBar.visibility = if (modeT <= 0.01f) View.INVISIBLE else hide
         expandedBox.alpha = ((t - 0.45f) * 2f).coerceIn(0f, 1f)
         expandedBox.visibility = if (t < 0.02f) View.INVISIBLE else View.VISIBLE
 
@@ -590,6 +623,11 @@ class NotchView(
         nowPlaying = if (playing && title != null) title else null
         songTitle = title
         songArtist = md?.getString(MediaMetadata.METADATA_KEY_ARTIST)
+        if (lastPlaying != playing) {
+            lastPlaying = playing
+            setStripMode(playing)
+            onPlaying?.invoke(playing)
+        }
         val st = songTitle
         val sa = songArtist
         if (st != null && sa != null && Lyrics.cached(st, sa) == null) {
@@ -674,12 +712,22 @@ class NotchView(
     private fun updateLyric() {
         val st = songTitle
         val sa = songArtist
+        val key = if (st != null && sa != null) Lyrics.key(st, sa) else null
+        if (key != lyricKey) {
+            // Ganti lagu: kosongkan lirik di strip.
+            lyricKey = key
+            lyricIdx = -1
+            onLyric?.invoke(null)
+        }
         val lines = if (st != null && sa != null) Lyrics.cached(st, sa) else null
-        lyricLine = if (playing && lines != null) Lyrics.current(lines, positionNow()) else null
-        val t = lyricLine ?: ""
-        if (lyricV.text.toString() != t) {
-            lyricV.text = t
-            onLyric?.invoke(lyricLine)
+        val idx = if (playing && lines != null) Lyrics.indexAt(lines, positionNow()) else -1
+        val text = if (idx >= 0) lines!![idx].text else ""
+        lyricLine = text.takeIf { it.isNotBlank() }
+        if (lyricV.text.toString() != text) lyricV.text = text
+        // Saat vokal berhenti (baris kosong) strip tidak dikosongkan: baris lama terus berjalan keluar.
+        if (idx != lyricIdx) {
+            lyricIdx = idx
+            if (lyricLine != null) onLyric?.invoke(lyricLine)
         }
     }
 
@@ -695,9 +743,8 @@ class NotchView(
             // Mode strip: zona tengah tab = lagu/timer, atau ikon notifikasi bila tidak ada.
             infoBar.zoneText = zone
             infoBar.invalidate()
-        } else {
-            collapsedLabel.text = zone ?: clockFormat.format(Date())
         }
+        collapsedLabel.text = zone ?: clockFormat.format(Date())
     }
 
     private fun formatMs(ms: Long): String {

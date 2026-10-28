@@ -109,7 +109,23 @@ class StatusStrip(
         }
     }
 
+    /** Tampilkan/sembunyikan strip dengan fade; saat tersembunyi status bar asli terlihat. */
+    fun setShown(show: Boolean) {
+        animate().cancel()
+        if (show) {
+            visibility = VISIBLE
+            animate().alpha(1f).setDuration(500).start()
+        } else {
+            animate().alpha(0f).setDuration(500).withEndAction {
+                items.clear()
+                visibility = INVISIBLE
+            }.start()
+        }
+    }
+
     fun attach() {
+        alpha = 0f
+        visibility = INVISIBLE
         try {
             wm.addView(this, params)
         } catch (e: Exception) {

@@ -67,6 +67,15 @@ object Lyrics {
         return out
     }
 
+    /** Indeks baris pada posisi [posMs], atau -1 sebelum baris pertama. */
+    fun indexAt(lines: List<Line>, posMs: Long): Int {
+        var res = -1
+        for (i in lines.indices) {
+            if (lines[i].ms <= posMs + 250) res = i else break
+        }
+        return res
+    }
+
     /** Baris yang sedang dinyanyikan pada posisi [posMs]. */
     fun current(lines: List<Line>, posMs: Long): String? {
         var res: String? = null
