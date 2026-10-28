@@ -864,10 +864,19 @@ class NotchView(
             ?: if (Store.hasListenerAccess(ctx)) ctx.getString(R.string.play_hint) else ctx.getString(R.string.need_access)
         playBtn.setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
 
+        // Cover tidak langsung dikosongkan bila pencarian sesaat gagal pada lagu yang sama.
+        val trackKey = (title ?: "") + "|" + (md?.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: "")
         val art = findArt(md, c)
-        if (art !== lastArt) {
-            lastArt = art
-            artV.setImageBitmap(art)
+        if (art != null) {
+            if (art !== lastArt) {
+                lastArt = art
+                artV.setImageBitmap(art)
+            }
+            artTrackKey = trackKey
+        } else if (trackKey != artTrackKey) {
+            lastArt = null
+            artV.setImageBitmap(null)
+            artTrackKey = trackKey
         }
 
         nowPlaying = if (playing && title != null) title else null
@@ -894,30 +903,73 @@ class NotchView(
      * Cover album: bitmap di metadata (Spotify hanya mengirimnya untuk iklan), lalu ikon besar
      * notifikasi media aplikasi itu, lalu URI gambar di metadata (diunduh di latar).
      */
+    private var notifArtKey: String? = null
+    private var notifArt: Bitmap? = null
+    private var artTrackKey: String? = null
+
+    private fun toBitmap(dr: android.graphics.drawable.Drawable): Bitmap {
+        val w = max(1, dr.intrinsicWidth)
+        val h = max(1, dr.intrinsicHeight)
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        dr.setBounds(0, 0, w, h)
+        dr.draw(android.graphics.Canvas(bmp))
+        return bmp
+    }
+
+    /** Cover dari notifikasi media aplikasi pemutar; hasilnya disimpan supaya tidak digambar ulang tiap 3 detik. */
+    private fun notificationArt(pkg: String): Bitmap? {
+        val list = try {
+            MediaWatcher.instance?.activeNotifications
+        } catch (e: Exception) {
+            null
+        } ?: return notifArt
+        val mine = list.filter { it.packageName == pkg }
+        val sbn = mine.firstOrNull { it.notification.category == android.app.Notification.CATEGORY_TRANSPORT }
+            ?: mine.firstOrNull()
+            ?: return null
+        val key = sbn.key + "|" + sbn.postTime
+        if (key == notifArtKey) return notifArt
+        var bmp: Bitmap? = null
+        try {
+            val n = sbn.notification
+            val ex = n.extras
+            @Suppress("DEPRECATION")
+            val big = ex.get(android.app.Notification.EXTRA_LARGE_ICON_BIG)
+            @Suppress("DEPRECATION")
+            val small = ex.get(android.app.Notification.EXTRA_LARGE_ICON)
+            for (o in listOf(big, small)) {
+                if (bmp != null) break
+                bmp = when (o) {
+                    is Bitmap -> o
+                    is android.graphics.drawable.Icon -> o.loadDrawable(ctx)?.let { toBitmap(it) }
+                    else -> null
+                }
+            }
+            if (bmp == null) {
+                bmp = n.getLargeIcon()?.loadDrawable(ctx)?.let { toBitmap(it) }
+            }
+        } catch (e: Exception) {
+        }
+        notifArtKey = key
+        notifArt = bmp
+        return bmp
+    }
+
     private fun findArt(md: MediaMetadata?, c: MediaController?): Bitmap? {
         md?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)?.let { return it }
         md?.getBitmap(MediaMetadata.METADATA_KEY_ART)?.let { return it }
         md?.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)?.let { return it }
+        try {
+            md?.description?.iconBitmap?.let { return it }
+        } catch (e: Exception) {
+        }
         if (c != null) {
-            try {
-                val sbn = MediaWatcher.instance?.activeNotifications?.firstOrNull {
-                    it.packageName == c.packageName && it.notification.getLargeIcon() != null
-                }
-                val dr = sbn?.notification?.getLargeIcon()?.loadDrawable(ctx)
-                if (dr != null) {
-                    val w = max(1, dr.intrinsicWidth)
-                    val h = max(1, dr.intrinsicHeight)
-                    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-                    dr.setBounds(0, 0, w, h)
-                    dr.draw(android.graphics.Canvas(bmp))
-                    return bmp
-                }
-            } catch (e: Exception) {
-            }
+            notificationArt(c.packageName)?.let { return it }
         }
         val u = md?.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
             ?: md?.getString(MediaMetadata.METADATA_KEY_ART_URI)
             ?: md?.getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI)
+            ?: try { md?.description?.iconUri?.toString() } catch (e: Exception) { null }
         if (u == null) {
             artUri = null
             uriBmp = null
