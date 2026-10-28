@@ -49,52 +49,45 @@ class StatusStrip(
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
     private val barH = barHeight
-    private class Item(val text: String, val w: Float, val start: Long)
+    private class Item(val text: String, val w: Float, val x0: Float, val start: Long)
 
     private val items = ArrayList<Item>()
-    private val queue = ArrayList<String>()
     private var running = false
-    private val speed = 100f * d // px per detik
-    private val gap = 24f * d
-    private val x0 = 14f * d
-    private val fadeMs = 350L
+    private val speed = 90f * d // px per detik
+    private val gap = 28f * d
 
-    private fun xOf(i: Item, now: Long) = x0 + (now - i.start) / 1000f * speed
+    private fun xOf(i: Item, now: Long) = i.x0 - (now - i.start) / 1000f * speed
 
     /**
-     * Gaya karaoke: tiap baris muncul penuh dari awal kalimat di kiri (memudar masuk), lalu
-     * berjalan ke kanan sampai keluar layar, tanpa menghapus baris sebelumnya. Baris baru
-     * menunggu sampai baris di depannya cukup jauh supaya tidak bertumpuk. Tab notch menutupi
-     * teks saat lewat (jendela notch ada di atas strip). Null = hapus semua.
+     * Gaya karaoke: tiap baris masuk dari tepi kanan dan berjalan ke kiri (awal kalimat masuk
+     * lebih dulu), terus sampai keluar di tepi kiri tanpa menghapus baris sebelumnya. Baris
+     * baru mengantre tepat di belakang baris sebelumnya supaya tidak bertumpuk. Tab notch
+     * menutupi teks saat lewat (jendela notch ada di atas strip). Null = hapus semua.
      */
     fun setLyric(text: String?) {
         val t = text?.takeIf { it.isNotBlank() }
         if (t == null) {
             items.clear()
-            queue.clear()
             invalidate()
             return
         }
-        queue.add(t)
-        while (queue.size > 2) queue.removeAt(0)
+        val now = System.currentTimeMillis()
+        val w = lyricPaint.measureText(t)
+        var x0 = width.toFloat()
+        items.lastOrNull()?.let { x0 = maxOf(x0, xOf(it, now) + it.w + gap) }
+        items.add(Item(t, w, x0, now))
         if (!running) {
             running = true
             ui.post(frame)
         }
+        invalidate()
     }
 
     private val frame = object : Runnable {
         override fun run() {
             val now = System.currentTimeMillis()
-            items.removeAll { xOf(it, now) > width }
-            if (queue.isNotEmpty()) {
-                val w = lyricPaint.measureText(queue[0])
-                val last = items.lastOrNull()
-                if (last == null || xOf(last, now) >= x0 + w + gap) {
-                    items.add(Item(queue.removeAt(0), w, now))
-                }
-            }
-            if (items.isEmpty() && queue.isEmpty()) {
+            items.removeAll { xOf(it, now) + it.w < 0f }
+            if (items.isEmpty()) {
                 running = false
                 invalidate()
                 return
@@ -111,11 +104,9 @@ class StatusStrip(
         val y = barH / 2f - (lyricPaint.ascent() + lyricPaint.descent()) / 2f
         for (i in items) {
             val x = xOf(i, now)
-            if (x > width) continue
-            lyricPaint.alpha = (255 * ((now - i.start).toFloat() / fadeMs).coerceIn(0f, 1f)).toInt()
+            if (x > width || x + i.w < 0f) continue
             canvas.drawText(i.text, x, y, lyricPaint)
         }
-        lyricPaint.alpha = 255
     }
 
     fun attach() {
@@ -127,7 +118,6 @@ class StatusStrip(
 
     fun detach() {
         items.clear()
-        queue.clear()
         running = false
         ui.removeCallbacksAndMessages(null)
         try {
