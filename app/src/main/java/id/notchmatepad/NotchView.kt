@@ -81,8 +81,8 @@ class NotchView(
     private val cardColor = Color.parseColor("#1C1C1E")
 
     // Tab tertutup (mode strip) mengikuti mode terang/gelap; panel terbuka selalu gelap.
-    private var themeDark = Theme.isDark(ctx)
-    private fun collapsedColor(): Int = if (stripHeight > 0) Theme.bar(themeDark) else Color.BLACK
+    private var themeDark = true
+    private fun collapsedColor(): Int = Color.BLACK
     private val bg = GradientDrawable().apply { setColor(collapsedColor()) }
     private val collapsedCorner = min(collapsedH / 2f, dpf(16f))
     private var cornerPx = collapsedCorner
@@ -355,15 +355,6 @@ class NotchView(
         override fun run() {
             tickCount++
             if (tickCount % 6 == 0) refreshSessions()
-            if (stripHeight > 0 && tickCount % 2 == 0) {
-                val dark = Theme.isDark(ctx)
-                if (dark != themeDark) {
-                    themeDark = dark
-                    info.setTheme(dark)
-                    applyProgress(progress)
-                    infoBar.invalidate()
-                }
-            }
             if (stripHeight > 0 && tickCount % 4 == 0) info.readAll()
             handleTimerFinish()
             updateCollapsed()
